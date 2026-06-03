@@ -17,7 +17,6 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockCompletionSample } from '../design-system/mockData';
 
 export interface MissionCompletionResult {
   missionId: string;
@@ -40,9 +39,17 @@ export interface MissionCompleteScreenProps {
   onContinue?: () => void;
 }
 
+const PLACEHOLDER_RESULT: MissionCompletionResult = {
+  missionId: '', title: '—', category: 'discipline',
+  rewardScore: 0, rewardRP: 0,
+  prevScore: 0, newScore: 0,
+  prevTier: 'dormant', newTier: 'dormant',
+  streakDays: 0, streakKept: false,
+};
+
 export function MissionCompleteScreen({
   tier = getTier('apex'),
-  result = mockCompletionSample as MissionCompletionResult,
+  result = PLACEHOLDER_RESULT,
   onShare,
   onContinue,
 }: MissionCompleteScreenProps) {

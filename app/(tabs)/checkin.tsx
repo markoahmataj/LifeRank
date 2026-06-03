@@ -41,23 +41,18 @@ export default function CheckInRoute() {
             if (rawRatings[id] === undefined) rawRatings[id] = 5;
           });
 
-          const { prevTier, newTier, entry, rpEarned } = submitCheckIn(rawRatings, { tags: Array.from(tags) });
+          const { prevTier, newTier, prevScore, newScore, entry, rpEarned } = submitCheckIn(rawRatings, { tags: Array.from(tags) });
           const direction = compareTiers(prevTier, newTier);
 
-          // Push to Supabase in the background (fire-and-forget). The checkins
-          // row is upserted by (user_id, date) so a same-day re-submit updates
-          // the existing row instead of duplicating it. life_state syncs
-          // automatically via the AppContext write-through effect.
           Sync.insertCheckin(entry, rpEarned);
 
-          // Reset local state immediately
           answers.current = [];
           setStepIndex(0);
 
           if (direction > 0) {
-            router.push('/rank/promotion');
+            router.push(`/rank/promotion?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
           } else if (direction < 0) {
-            router.push('/rank/demotion-risk');
+            router.push(`/rank/demotion-risk?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
           } else {
             router.push('/checkin/results');
           }

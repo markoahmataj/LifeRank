@@ -15,7 +15,9 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, state, radius,
 } from '../design-system/tokens';
-import { mockLifeScore, mockCategoryScores } from '../design-system/mockData';
+import type { LifeScore as LifeScoreType } from '../design-system/types';
+
+const ZERO_SCORE: LifeScoreType = { value: 0, delta: 0, tier: 'dormant', nextRankAt: 3.0, streak: 0 };
 
 export interface StatsScreenProps {
   tier?: RankTier;
@@ -29,8 +31,8 @@ export interface StatsScreenProps {
 export function StatsScreen({
   tier = getTier('apex'),
   onBack,
-  score = mockLifeScore,
-  categoryScores = mockCategoryScores,
+  score = ZERO_SCORE,
+  categoryScores = [],
   logbook,
   onCategoryPress,
 }: StatsScreenProps) {

@@ -16,7 +16,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockFailureSample, mockAvailableMissions } from '../design-system/mockData';
+import { mockAvailableMissions } from '../design-system/mockData';
 
 export interface MissionFailureResult {
   missionId: string;
@@ -28,6 +28,12 @@ export interface MissionFailureResult {
   recoveryMissionId: string;
 }
 
+const PLACEHOLDER_FAILURE: MissionFailureResult = {
+  missionId: '', title: '—', category: 'discipline',
+  missedDays: 0, scoreImpact: 0, streakBroken: false,
+  recoveryMissionId: mockAvailableMissions[0]?.id ?? '',
+};
+
 export interface MissionFailedScreenProps {
   tier?: RankTier;
   failure?: MissionFailureResult;
@@ -38,8 +44,8 @@ export interface MissionFailedScreenProps {
 
 export function MissionFailedScreen({
   tier = getTier('apex'),
-  failure = mockFailureSample as MissionFailureResult,
-  recoveryMission = mockAvailableMissions.find(m => m.id === failure?.recoveryMissionId) ?? mockAvailableMissions[2],
+  failure = PLACEHOLDER_FAILURE,
+  recoveryMission = mockAvailableMissions[0],
   onRecalibrate,
   onAssignRecovery,
 }: MissionFailedScreenProps) {

@@ -20,7 +20,15 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, spacing, surface, fonts, alpha, state,
 } from '../design-system/tokens';
-import { mockUser, mockQuickActions } from '../design-system/mockData';
+import { mockBuild, mockQuickActions } from '../design-system/mockData';
+
+const EMPTY_USER: UserState = {
+  handle: '@you', displayName: 'You', initial: 'Y',
+  score: { value: 0, delta: 0, tier: 'dormant', nextRankAt: 3.0, streak: 0 },
+  build: mockBuild,
+  categories: [],
+  activeMissions: [],
+};
 
 function computeSystemSignals(score: LifeScore, logbook: LogbookEntry[]): SystemSignal[] {
   const momentum = Math.round(Math.max(0, Math.min(100, 50 + score.delta * 25)));
@@ -68,7 +76,7 @@ export interface HomeScreenProps {
 }
 
 export function HomeScreen({
-  user = mockUser,
+  user = EMPTY_USER,
   logbook = [],
   onNotifications,
   onProfile,

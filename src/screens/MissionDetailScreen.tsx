@@ -17,7 +17,12 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockActiveMissions, mockAvailableMissions, mockMissionRules } from '../design-system/mockData';
+import { mockAvailableMissions, mockMissionRules } from '../design-system/mockData';
+
+const PLACEHOLDER_MISSION: Mission = {
+  id: '', title: '—', subtitle: '', difficulty: 1,
+  rewardScore: 0, rewardRP: 0, category: 'discipline', status: 'available',
+};
 
 export interface MissionDetailScreenProps {
   tier?: RankTier;
@@ -33,7 +38,7 @@ export interface MissionDetailScreenProps {
 
 export function MissionDetailScreen({
   tier = getTier('apex'),
-  mission = mockActiveMissions[0],
+  mission = PLACEHOLDER_MISSION,
   onBack, onAccept, onAbandon, onToggleTask, onComplete, onContinue, onViewResult,
 }: MissionDetailScreenProps) {
   const cat = categories[mission.category];

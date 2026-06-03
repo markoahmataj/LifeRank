@@ -17,9 +17,10 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius,
 } from '../design-system/tokens';
-import {
-  mockLifeScore, mockCategoryScores, defaultShareConfig, SHARE_HEADLINES,
-} from '../design-system/mockData';
+import { defaultShareConfig, SHARE_HEADLINES } from '../design-system/mockData';
+import type { LifeScore as LifeScoreType } from '../design-system/types';
+
+const ZERO_SCORE: LifeScoreType = { value: 0, delta: 0, tier: 'dormant', nextRankAt: 3.0, streak: 0 };
 
 export interface ShareScreenProps {
   tier?: RankTier;
@@ -36,8 +37,8 @@ export function ShareScreen({
   onBack,
   onBroadcast,
   onSendTo,
-  score = mockLifeScore,
-  categoryScores = mockCategoryScores,
+  score = ZERO_SCORE,
+  categoryScores = [],
   handle = '@you',
 }: ShareScreenProps) {
   const [layout, setLayout] = useState<ShareLayout>(defaultShareConfig.layout);

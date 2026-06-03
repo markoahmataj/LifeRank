@@ -39,8 +39,8 @@ export function CheckInScreen({
   const categoryId: CategoryId = CATEGORY_ORDER[stepIndex];
   const category = categories[categoryId];
 
-  const [score, setScore] = useState<number>(8);
-  const [selectedTags, setSelectedTags] = useState<CheckInTagId[]>(['locked-in']);
+  const [score, setScore] = useState<number>(5);
+  const [selectedTags, setSelectedTags] = useState<CheckInTagId[]>([]);
 
   const segment = useMemo(() => segmentForScore(score), [score]);
 

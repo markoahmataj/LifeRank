@@ -8,7 +8,8 @@ import { useAuth } from '@/src/auth/AuthProvider';
 import { getTier } from '@/src/design-system/tokens';
 import { rpForMissionComplete } from '@/src/design-system/scoringModel';
 import * as Sync from '@/src/services/liferankSync';
-import { mockActiveMissions, mockAvailableMissions, mockCompletedMissions } from '@/src/design-system/mockData';
+import { mockAvailableMissions } from '@/src/design-system/mockData';
+import { useEffect } from 'react';
 
 export default function MissionDetailRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,13 +18,18 @@ export default function MissionDetailRoute() {
   const { user } = useAuth();
   const tier = getTier(state.score.tier);
 
-  // Prefer real state — fall back to design mocks for available/completed library.
+  // Active missions come from real state. Available missions are the static
+  // library (allowed — not fake user progress). No other fallbacks.
   const mission =
     state.activeMissions.find(m => m.id === id) ??
-    mockActiveMissions.find(m => m.id === id) ??
     mockAvailableMissions.find(m => m.id === id) ??
-    mockCompletedMissions.find(m => m.id === id) ??
-    mockActiveMissions[0];
+    null;
+
+  useEffect(() => {
+    if (!mission) router.back();
+  }, []);
+
+  if (!mission) return null;
 
   return (
     <MissionDetailScreen

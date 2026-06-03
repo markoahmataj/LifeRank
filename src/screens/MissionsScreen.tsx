@@ -15,9 +15,7 @@ import { EnergyBar } from '../components/EnergyBar';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius,
 } from '../design-system/tokens';
-import {
-  mockActiveMissions, mockAvailableMissions, mockCompletedMissions,
-} from '../design-system/mockData';
+import { mockAvailableMissions } from '../design-system/mockData';
 
 type MissionFilter = 'active' | 'available' | 'completed';
 
@@ -40,15 +38,14 @@ export function MissionsScreen({
 }: MissionsScreenProps) {
   const [filter, setFilter] = useState<MissionFilter>('active');
 
-  const active    = activeMissions    ?? mockActiveMissions;
+  const active    = activeMissions    ?? [];
   const available = availableMissions ?? mockAvailableMissions;
-  const completed = completedMissions ?? mockCompletedMissions;
+  const completed = completedMissions ?? [];
 
   const featured =
     active[0]
     ?? available.find(m => m.status === 'featured')
-    ?? available[0]
-    ?? mockActiveMissions[0];
+    ?? available[0];
   const list = useMemo<Mission[]>(() => {
     if (filter === 'active')    return active;
     if (filter === 'available') return available;

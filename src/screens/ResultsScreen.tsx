@@ -18,7 +18,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, state, radius,
 } from '../design-system/tokens';
-import { mockUser, mockDiagnosis, mockBuild, mockAvailableMissions } from '../design-system/mockData';
+import { mockBuild, mockAvailableMissions } from '../design-system/mockData';
 
 export interface ResultsScreenProps {
   tier?: RankTier;
@@ -33,13 +33,19 @@ export interface ResultsScreenProps {
   onNextMissionPress?: (id: string) => void;
 }
 
+const EMPTY_DIAGNOSIS: Diagnosis = {
+  strongest: { category: 'discipline', delta: 0 },
+  weakest:   { category: 'discipline', delta: 0 },
+  narrative: '',
+};
+
 export function ResultsScreen({
   tier = getTier('apex'),
-  prevScore = 8.1,
-  newScore = 8.4,
-  diagnosis = mockDiagnosis,
+  prevScore = 0,
+  newScore = 0,
+  diagnosis = EMPTY_DIAGNOSIS,
   build = mockBuild,
-  nextMission = mockAvailableMissions.find(m => m.id === 'OP-301') ?? mockAvailableMissions[0],
+  nextMission = mockAvailableMissions[0],
   categoryMovement,
   onShare,
   onContinue,
@@ -47,10 +53,7 @@ export function ResultsScreen({
 }: ResultsScreenProps) {
   const delta = +(newScore - prevScore).toFixed(1);
   const display = useDeltaCount(prevScore, newScore, 1200);
-  const movement = categoryMovement ?? mockUser.categories.map(c => ({
-    id: c.id,
-    delta: c.delta,
-  }));
+  const movement = categoryMovement ?? [];
 
   return (
     <View style={styles.root}>
@@ -61,7 +64,7 @@ export function ResultsScreen({
         <View style={styles.statusWrap}>
           <View style={[styles.statusTag, { backgroundColor: alpha(state.win, 0.14), borderColor: alpha(state.win, 0.4) }]}>
             <View style={[styles.statusDot, { backgroundColor: state.win }]}/>
-            <Text style={[styles.statusLabel, { color: state.win }]}>CHECK-IN PROCESSED · 06:42</Text>
+            <Text style={[styles.statusLabel, { color: state.win }]}>CHECK-IN PROCESSED · {new Date().toLocaleTimeString('default', { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
           </View>
         </View>
 

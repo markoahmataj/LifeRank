@@ -17,7 +17,7 @@ import { MissionCard } from '../components/MissionCard';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockAvailableMissions, mockPromotionSample, mockDemotionRiskSample } from '../design-system/mockData';
+import { mockAvailableMissions } from '../design-system/mockData';
 
 export type RankPromotionScreenMode = 'promotion' | 'demotion-risk';
 
@@ -35,16 +35,14 @@ export interface RankPromotionScreenProps {
 
 export function RankPromotionScreen({
   mode = 'promotion',
-  prevTier  = mode === 'promotion' ? mockPromotionSample.prevTier : mockDemotionRiskSample.currentTier,
-  newTier   = mode === 'promotion' ? mockPromotionSample.newTier  : mockDemotionRiskSample.fallTo,
-  prevScore = mode === 'promotion' ? mockPromotionSample.prevScore : mockDemotionRiskSample.currentScore,
-  newScore  = mode === 'promotion' ? mockPromotionSample.newScore  : mockDemotionRiskSample.fallAt,
-  unlockedMissions = mode === 'promotion'
-    ? mockAvailableMissions.filter(m => mockPromotionSample.unlockedMissionIds.includes(m.id))
-    : [],
+  prevTier  = 'dormant',
+  newTier   = 'dormant',
+  prevScore = 0,
+  newScore  = 0,
+  unlockedMissions = [],
   narrative = mode === 'promotion'
-    ? mockPromotionSample.narrative
-    : 'Your score is hovering at the floor of Apex. One more weak cycle pulls you back to Ascendant. Accept a recovery mission to stabilize.',
+    ? 'Rank threshold cleared. New operations available.'
+    : 'Score trending below current tier floor. Accept a recovery mission to stabilize.',
   onShare,
   onContinue,
 }: RankPromotionScreenProps) {
@@ -130,7 +128,7 @@ export function RankPromotionScreen({
             <SectionHeader index="02" title="Recovery Protocol"/>
             <View style={styles.padded}>
               <MissionCard
-                mission={mockAvailableMissions.find(m => m.id === mockDemotionRiskSample.recoveryMissionId) ?? mockAvailableMissions[1]}
+                mission={mockAvailableMissions[0]}
                 tier={tier}
                 variant="compact"
                 accentColor={tier.accent}

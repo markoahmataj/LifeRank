@@ -17,7 +17,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockProfile, mockBuild } from '../design-system/mockData';
+import { mockBuild } from '../design-system/mockData';
 
 export interface ProfileScreenProps {
   onShare?: () => void;
@@ -41,27 +41,25 @@ export function ProfileScreen({
   onShare,
   onBack,
   onOpenSettings,
-  handle = mockProfile.handle,
-  displayName = mockProfile.displayName,
+  handle = '@you',
+  displayName = 'You',
   score,
   build = mockBuild,
   rp,
-  favoriteCategory = mockProfile.favoriteCategory,
-  joinedAt = mockProfile.joinedAt,
+  favoriteCategory = 'discipline',
+  joinedAt,
   personalBest,
   longestStreak,
   totalCheckIns,
   completedOperations,
   rankPromotions,
 }: ProfileScreenProps) {
-  const tier: RankTier = getTier(score?.tier ?? mockProfile.rankTier);
+  const tier: RankTier = getTier(score?.tier ?? 'dormant');
   const fav = categories[favoriteCategory];
-  const joined = new Date(joinedAt);
-  const pbScore  = personalBest ?? score?.pbScore ?? mockProfile.personalBest;
-  const longest  = longestStreak ?? score?.streak ?? mockProfile.longestStreak;
-  const checkIns = totalCheckIns ?? mockProfile.totalCheckIns;
-  const ops      = completedOperations ?? mockProfile.completedOperations;
-  const promos   = rankPromotions ?? mockProfile.rankPromotions;
+  const pbScore  = personalBest ?? score?.pbScore ?? score?.value ?? 0;
+  const longest  = longestStreak ?? score?.streak ?? 0;
+  const checkIns = totalCheckIns ?? 0;
+  const ops      = completedOperations ?? 0;
 
   return (
     <View style={styles.root}>
@@ -101,7 +99,7 @@ export function ProfileScreen({
                 <View style={[styles.tierRule, { backgroundColor: tier.primary }]}/>
               </View>
               <Text style={styles.joinedLabel}>
-                LEDGER OPEN · {joined.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()}
+                LEDGER OPEN · {joinedAt ? new Date(joinedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase() : '—'}
               </Text>
             </View>
           </HudCard>
@@ -138,7 +136,7 @@ export function ProfileScreen({
           <RecordTile label="CHECK-INS"       value={String(checkIns)}    color={tier.mid}/>
           <RecordTile label="OPERATIONS"      value={String(ops)} color={tier.far}/>
           <RecordTile label="RP"              value={String(rp ?? 0)}    color={state.win}/>
-          <RecordTile label="DAYS ACTIVE"     value={String(daysSince(joinedAt))} color={state.signal}/>
+          <RecordTile label="DAYS ACTIVE"     value={joinedAt ? String(daysSince(joinedAt)) : '—'} color={state.signal}/>
         </View>
 
         {/* FAVORITE CATEGORY */}

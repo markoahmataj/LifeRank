@@ -14,7 +14,6 @@ import { EmptyState } from '../components/EmptyState';
 import {
   getTier, surface, spacing, fonts, alpha, radius,
 } from '../design-system/tokens';
-import { mockNotifications } from '../design-system/mockData';
 
 export interface NotificationsScreenProps {
   tier?: RankTier;
@@ -25,7 +24,7 @@ export interface NotificationsScreenProps {
 
 export function NotificationsScreen({
   tier = getTier('apex'),
-  notifications = mockNotifications,
+  notifications = [],
   onBack,
   onSelect,
 }: NotificationsScreenProps) {
