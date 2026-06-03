@@ -1,4 +1,52 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "PowerShell(python \"C:\\\\Users\\\\marko\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"competitive ranked game life stats progression social mobile app\" --design-system -p \"LifeRank\" -f markdown)",
+      "Read(//c/Users/marko/.claude/skills/ui-ux-pro-max/**)",
+      "Read(//c/Users/marko/src/ui-ux-pro-max/scripts/**)",
+      "Read(//c/Users/marko/.claude/**)",
+      "Bash(Remove-Item -Recurse -Force \"c:\\\\Claude\\\\LifeRank\\\\components\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Claude\\\\LifeRank\\\\app\\\\index.tsx\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Claude\\\\LifeRank\\\\app\\\\results.tsx\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Claude\\\\LifeRank\\\\app\\\\missions.tsx\" -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force \"c:\\\\Claude\\\\LifeRank\\\\app\\\\statline.tsx\" -ErrorAction SilentlyContinue)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Claude\\\\LifeRank\\\\src\\\\screens\")",
+      "PowerShell(cd C:\\\\Claude\\\\LifeRank; npx tsc --noEmit 2>&1 | Where-Object { $_ -notmatch \"claudedesign\" } | Select-Object -First 80)",
+      "Bash(tee /tmp/tsc-output.txt)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npx expo-doctor *)",
+      "Bash(npx expo *)",
+      "Bash(tee expo-check.txt)",
+      "Bash(tee expo-fix.txt)",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:expo.dev)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:react-native-google-signin.github.io)",
+      "Bash(git check-ignore *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"try { const p = require\\('./package.json'\\); console.log\\('VALID JSON'\\); console.log\\('deps:', Object.keys\\(p.dependencies\\).join\\(', '\\)\\); console.log\\('has scripts:', !!p.scripts\\); } catch\\(e\\) { console.log\\('INVALID JSON:', e.message\\); }\")",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('VALID JSON'\\); console.log\\('deps count:', Object.keys\\(p.dependencies\\).length\\); console.log\\('new deps present:', ['@supabase/supabase-js','aes-js','react-native-get-random-values','@react-native-google-signin/google-signin','expo-secure-store','expo-apple-authentication'].every\\(d => d in p.dependencies\\)\\); console.log\\('@types/aes-js:', p.devDependencies['@types/aes-js']\\);\")",
+      "Bash(node -e \"const p=require\\('./node_modules/@react-native-google-signin/google-signin/package.json'\\); console.log\\('version:', p.version\\); console.log\\('main:', p.main\\); console.log\\('module:', p.module\\); console.log\\('react-native:', p['react-native']\\); console.log\\('browser:', p.browser\\); console.log\\('exports keys:', p.exports ? Object.keys\\(p.exports\\) : 'none'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const raw=fs.readFileSync\\('app.json','utf8'\\); console.log\\('--- byte length:', raw.length\\); console.log\\('--- expo key count:', \\(raw.match\\(/\\\\\"expo\\\\\"/g\\)||[]\\).length\\); console.log\\('--- secure-store count:', \\(raw.match\\(/expo-secure-store/g\\)||[]\\).length\\); try { JSON.parse\\(raw\\); console.log\\('--- JSON.parse: OK'\\); } catch\\(e\\){ console.log\\('--- JSON.parse ERROR:', e.message\\); }\")",
+      "Bash(node -e \"const p=require\\('./app.json'\\); console.log\\('valid JSON'\\); console.log\\('ios.usesAppleSignIn:', p.expo.ios.usesAppleSignIn\\); console.log\\('plugins:', JSON.stringify\\(p.expo.plugins\\)\\);\")",
+      "Bash(node -e \"const p=require\\('./node_modules/expo-apple-authentication/package.json'\\); console.log\\('main:',p.main\\); console.log\\('exports:', p.exports?JSON.stringify\\(p.exports\\):'none'\\)\")",
+      "Bash(cd /tmp)",
+      "Bash(node -e \"console.log\\(require\\('C:/Claude/LifeRank/node_modules/babel-preset-expo/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/babel-preset-expo/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\('babel-preset-expo:', require\\('./node_modules/babel-preset-expo/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\('rngrv:', require\\('./node_modules/react-native-get-random-values/package.json'\\).version\\)\")",
+      "Bash(git --no-pager status --short)",
+      "Bash(ls -la .expo/types/ 2>/dev/null; echo \"--- mtime of router.d.ts ---\"; stat -c '%y' .expo/types/router.d.ts 2>/dev/null || echo \"no file\")",
+      "Read(//c/Claude/LifeRank/**)",
+      "Bash(echo \"TSC_EXIT=$?\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Claude\\LifeRank\\app\\check-in"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   }
