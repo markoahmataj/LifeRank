@@ -189,10 +189,10 @@ export function StatsScreen({
                         </Text>
                       </View>
                     </View>
-                    <MiniSpark
-                      color={cat.accent}
-                      points={generateSparkData(cs.value, cs.delta)}
-                    />
+                    {(() => {
+                      const spark = sparkForCategory(cs.id, logbook);
+                      return spark ? <MiniSpark color={cat.accent} points={spark}/> : null;
+                    })()}
                   </View>
                 </HudCard>
               </Pressable>
@@ -282,12 +282,12 @@ function useChartGeometry(series: number[], W: number, H: number) {
   }, [series, W, H]);
 }
 
-function generateSparkData(value: number, delta: number): number[] {
-  const trail: number[] = [];
-  for (let i = 0; i < 7; i++) {
-    trail.push(value - delta + (delta * i) / 6 + (Math.sin(i * 1.7) * 0.05));
-  }
-  return trail;
+function sparkForCategory(categoryId: CategoryId, logbook: LogbookEntry[] | undefined): number[] | null {
+  if (!logbook || logbook.length < 2) return null;
+  const pts = [...logbook].slice(0, 7).reverse()
+    .map(e => e.categoryScores.find(c => c.id === categoryId)?.value ?? null)
+    .filter((v): v is number => v !== null);
+  return pts.length >= 2 ? pts : null;
 }
 
 function MiniSpark({ color, points }: { color: string; points: number[] }) {

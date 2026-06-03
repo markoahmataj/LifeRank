@@ -43,7 +43,9 @@
       "Read(//c/Claude/LifeRank/**)",
       "Bash(echo \"TSC_EXIT=$?\")",
       "Bash(echo \"DOCTOR_EXIT=$?\")",
-      "Bash(echo \"EXPORT_EXIT=$?\")"
+      "Bash(echo \"EXPORT_EXIT=$?\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Claude\\\\LifeRank\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30)"
     ],
     "additionalDirectories": [
       "c:\\Claude\\LifeRank\\app\\check-in"

@@ -125,7 +125,7 @@ export function MissionCompleteScreen({
                 <Text style={[styles.cap, { color: cat.accent }]}>PILLAR STRENGTHENED</Text>
                 <Text style={styles.catName}>{cat.name}</Text>
               </View>
-              <Text style={[styles.catGain, { color: cat.accent }]}>+0.4</Text>
+              <Text style={[styles.catGain, { color: cat.accent }]}>+{result.rewardScore.toFixed(1)}</Text>
             </View>
           </HudCard>
         </View>

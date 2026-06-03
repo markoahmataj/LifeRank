@@ -86,7 +86,7 @@ export function ResultsScreen({
 
           <View style={[styles.deltaPill, { backgroundColor: alpha(tier.primary, 0.12), borderColor: alpha(tier.primary, 0.33) }]}>
             <Svg width={9} height={9} viewBox="0 0 9 9"><Path d="M4.5 1l3 4H6v3H3V5H1z" fill={tier.primary}/></Svg>
-            <Text style={[styles.deltaLabel, { color: tier.primary }]}>+{delta.toFixed(1)} POINTS · BEST WEEK Q4</Text>
+            <Text style={[styles.deltaLabel, { color: tier.primary }]}>+{delta.toFixed(1)} POINTS · THIS CHECK-IN</Text>
           </View>
         </View>
 

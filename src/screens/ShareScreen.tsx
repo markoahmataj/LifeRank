@@ -17,7 +17,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius,
 } from '../design-system/tokens';
-import { defaultShareConfig, SHARE_HEADLINES } from '../design-system/mockData';
+import { defaultShareConfig } from '../design-system/mockData';
 import type { LifeScore as LifeScoreType } from '../design-system/types';
 
 const ZERO_SCORE: LifeScoreType = { value: 0, delta: 0, tier: 'dormant', nextRankAt: 3.0, streak: 0 };
@@ -98,7 +98,7 @@ export function ShareScreen({
                 ]}
               >
                 <View style={[styles.thumb, { backgroundColor: surface.bg, borderColor: surface.hairlineSoft }]}>
-                  <ThumbVariant variant={v} tier={tier}/>
+                  <ThumbVariant variant={v} tier={tier} score={score}/>
                 </View>
                 <Text style={[styles.layoutLabel, { color: active ? '#fff' : alpha('#fff', 0.65) }]}>
                   {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -286,14 +286,14 @@ function BadgeLayout({ tier, toggles, handle }: { tier: RankTier; toggles: Poste
     <>
       <View style={{ position: 'absolute', top: 22, left: 22, right: 22, alignItems: 'center' }}>
         <Text style={[styles.posterCap, { letterSpacing: 2 }]}>OPERATION COMPLETE</Text>
-        <Text style={styles.badgeTitle}>Iron Week</Text>
+        <Text style={styles.badgeTitle}>Mission Clear</Text>
       </View>
       <View style={{ position: 'absolute', top: 80, left: 0, right: 0, alignItems: 'center' }}>
         <RankEmblem tier={tier} size={170} animated={false} glyph="✓"/>
       </View>
       <View style={{ position: 'absolute', bottom: 70, left: 22, right: 22, alignItems: 'center' }}>
         <View style={[styles.rewardPill, { backgroundColor: alpha(tier.primary, 0.16), borderColor: alpha(tier.primary, 0.4) }]}>
-          <Text style={[styles.rewardText, { color: tier.primary }]}>+0.4 SCORE</Text>
+          <Text style={[styles.rewardText, { color: tier.primary }]}>LIFERANK · OPERATIONS</Text>
         </View>
         <Text style={[styles.posterTier, { color: tier.primary, marginTop: 10 }]}>HELD · {tier.name} {tier.sublabel.replace('TIER ', '')}</Text>
       </View>
@@ -305,19 +305,19 @@ function BadgeLayout({ tier, toggles, handle }: { tier: RankTier; toggles: Poste
   );
 }
 
-function ThumbVariant({ variant, tier }: { variant: ShareLayout; tier: RankTier }) {
+function ThumbVariant({ variant, tier, score }: { variant: ShareLayout; tier: RankTier; score: LifeScore }) {
   if (variant === 'poster') {
     return (
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center' }]}>
         <View style={[styles.thumbHex, { backgroundColor: tier.primary, marginTop: 8 }]}/>
-        <Text style={styles.thumbScore}>8.4</Text>
+        <Text style={styles.thumbScore}>{score.value.toFixed(1)}</Text>
       </View>
     );
   }
   if (variant === 'minimal') {
     return (
       <View style={[StyleSheet.absoluteFill, { padding: 6 }]}>
-        <Text style={[styles.thumbScore, { marginTop: 16, color: '#fff' }]}>8.4</Text>
+        <Text style={[styles.thumbScore, { marginTop: 16, color: '#fff' }]}>{score.value.toFixed(1)}</Text>
       </View>
     );
   }

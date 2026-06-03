@@ -39,8 +39,24 @@ export function CategoryDetailScreen({
   const cat = categories[categoryId];
   const score = categoryScores?.find(c => c.id === categoryId) ?? { ...ZERO_SCORE, id: categoryId };
 
-  const trail7  = useMemo(() => makeTrail(score.value, score.delta, 7),  [score]);
-  const trail30 = useMemo(() => makeTrail(score.value, score.delta, 30), [score]);
+  const trail7 = useMemo(() => {
+    const entries = [...(logbook ?? [])].slice(0, 7).reverse();
+    if (entries.length < 2) return null;
+    return entries.map(e => e.categoryScores.find(c => c.id === categoryId)?.value ?? score.value);
+  }, [logbook, categoryId, score.value]);
+
+  const trail30 = useMemo(() => {
+    const entries = [...(logbook ?? [])].slice(0, 30).reverse();
+    if (entries.length < 2) return null;
+    return entries.map(e => e.categoryScores.find(c => c.id === categoryId)?.value ?? score.value);
+  }, [logbook, categoryId, score.value]);
+
+  const rank = useMemo(() => {
+    if (!categoryScores?.length) return '—';
+    const sorted = [...categoryScores].sort((a, b) => b.value - a.value);
+    const idx = sorted.findIndex(c => c.id === categoryId);
+    return idx >= 0 ? `#${idx + 1} of ${categoryScores.length}` : '—';
+  }, [categoryScores, categoryId]);
 
   const relatedMissions = mockAvailableMissions.filter(m => m.category === categoryId);
   const recentEntries = (logbook ?? []).slice(0, 5);
@@ -113,7 +129,7 @@ export function CategoryDetailScreen({
           />
           <StatusTile
             label="RANK"
-            value={'#2 of 5'}
+            value={rank}
             tone={cat.accent}
           />
         </View>
@@ -121,8 +137,14 @@ export function CategoryDetailScreen({
         {/* TRENDS */}
         <SectionHeader index="02" title="Movement"/>
         <View style={[styles.padded, { gap: 10 }]}>
-          <TrendCard title="7-DAY TRAIL"  data={trail7}  accent={cat.accent}/>
-          <TrendCard title="30-DAY TRAIL" data={trail30} accent={cat.accent}/>
+          {trail7
+            ? <TrendCard title="7-DAY TRAIL"  data={trail7}  accent={cat.accent}/>
+            : <TrailEmpty title="7-DAY TRAIL"  accent={cat.accent}/>
+          }
+          {trail30
+            ? <TrendCard title="30-DAY TRAIL" data={trail30} accent={cat.accent}/>
+            : <TrailEmpty title="30-DAY TRAIL" accent={cat.accent}/>
+          }
         </View>
 
         {/* SIGNALS */}
@@ -195,13 +217,6 @@ export function CategoryDetailScreen({
 }
 
 /* ─── helpers + per-category content ─────────────────────────────── */
-function makeTrail(value: number, delta: number, n: number): number[] {
-  const arr: number[] = [];
-  for (let i = 0; i < n; i++) {
-    arr.push(value - delta + (delta * i) / (n - 1) + Math.sin(i * 0.8) * 0.06);
-  }
-  return arr;
-}
 
 const BLURB: Record<CategoryId, string> = {
   discipline:  'Routine, focus, follow-through.',
@@ -212,19 +227,19 @@ const BLURB: Record<CategoryId, string> = {
 };
 
 const STRONGEST: Record<CategoryId, string> = {
-  discipline:  '6 AM wake-time logged 12 of 14 days. Anchor habit holding.',
-  style:       'Wardrobe upgrade compounded weekly photo signal.',
-  environment: 'Desk audit + light protocol pushed pillar to +0.4.',
-  money:       'Subscription audit cleared monthly drift entirely.',
-  career:      'Deep-work blocks held 5 days running — output curve.',
+  discipline:  'Anchor habits and morning protocol are the primary drivers.',
+  style:       'Wardrobe curation and physical presentation signal strength.',
+  environment: 'Workspace optimization and light protocol lead growth.',
+  money:       'Subscription discipline and spend control compound gains.',
+  career:      'Deep-work blocks and focused output sessions drive the curve.',
 };
 
 const DRAGGING: Record<CategoryId, string> = {
-  discipline:  'Reading block missed 4 nights in 14. Stack with strength.',
-  style:       'Outfit auto-pilot — same 3 looks in rotation 11 days.',
-  environment: 'Bedroom signal weak. Noise + clutter both flagged.',
-  money:       'Impulse spend window 22:00–24:00 — set a hard cap.',
-  career:      'Output slipped Tue/Wed. No focused block recorded.',
+  discipline:  'Missed routines and inconsistent sleep create friction.',
+  style:       'Outfit defaults and low-effort days reduce the score.',
+  environment: 'Clutter, noise, and poor lighting are drag factors.',
+  money:       'Impulse windows and unreviewed subscriptions leak value.',
+  career:      'Skipped output blocks and unfocused work hours weigh here.',
 };
 
 const TAGS: Record<CategoryId, string[]> = {
@@ -258,6 +273,20 @@ function StatusTile({ label, value, tone }: { label: string; value: string; tone
         <Text style={[styles.tileValue, { color: tone }]}>{value}</Text>
       </HudCard>
     </View>
+  );
+}
+
+function TrailEmpty({ title, accent }: { title: string; accent: string }) {
+  return (
+    <HudCard padding={{ x: 14, y: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={styles.tileLabel}>{title}</Text>
+        <Text style={[styles.tileLabel, { color: accent }]}>—</Text>
+      </View>
+      <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+        <Text style={{ fontFamily: fonts.mono, fontSize: 10, color: surface.textMuted, letterSpacing: 1 }}>NO DATA YET</Text>
+      </View>
+    </HudCard>
   );
 }
 

@@ -250,7 +250,7 @@ export async function upsertSettings(settings: UserSettings): Promise<void> {
     );
     if (error) throw error;
   } catch (e) {
-    console.warn('[liferankSync] upsertSettings failed', (e as Error).message);
+    console.error('[SETTINGS_SYNC_ERROR] upsertSettings failed', e);
   }
 }
 
@@ -279,8 +279,15 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
-    if (lifeError) throw lifeError;
-    if (!life) return null; // No remote data yet — caller should migrate.
+    if (lifeError) {
+      console.error('[LIFESTATE_FETCH_ERROR]', { userId, error: lifeError });
+      throw lifeError;
+    }
+    if (!life) {
+      console.log('[LIFESTATE_FETCH]', { userId, found: false });
+      return null; // No remote data yet — caller should migrate.
+    }
+    console.log('[LIFESTATE_FETCH]', { userId, found: true, isCalibrated: life.is_calibrated, score: life.score });
 
     const { data: checkins, error: checkinsError } = await supabase
       .from('checkins')
@@ -290,11 +297,16 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
       .limit(CHECKIN_FETCH_LIMIT);
     if (checkinsError) throw checkinsError;
 
-    const { data: settingsRow } = await supabase
+    const { data: settingsRow, error: settingsError } = await supabase
       .from('user_settings')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
+    if (settingsError) {
+      console.error('[SETTINGS_FETCH_ERROR]', { userId, error: settingsError });
+    } else {
+      console.log('[SETTINGS_FETCH_SUCCESS]', { userId, found: !!settingsRow });
+    }
 
     const score: LifeScore = {
       value: Number(life.score),
@@ -377,7 +389,7 @@ export async function fetchProfile(userId: string): Promise<RemoteProfile | null
       joinedAt: data.joined_at,
     };
   } catch (e) {
-    console.warn('[liferankSync] fetchProfile failed', (e as Error).message);
+    console.error('[PROFILE_FETCH_ERROR] fetchProfile failed', e);
     return null;
   }
 }
@@ -394,7 +406,7 @@ export async function clearRemoteData(): Promise<void> {
     await supabase.from('mission_events').delete().eq('user_id', userId);
     await supabase.from('life_state').delete().eq('user_id', userId);
   } catch (e) {
-    console.warn('[liferankSync] clearRemoteData failed', (e as Error).message);
+    console.error('[CLEAR_REMOTE_ERROR] clearRemoteData failed', e);
   }
 }
 
@@ -411,6 +423,6 @@ export async function migrateLocalToRemote(state: AppState): Promise<void> {
       await insertCheckin(entry, 0);
     }
   } catch (e) {
-    console.warn('[liferankSync] migrateLocalToRemote failed', (e as Error).message);
+    console.error('[MIGRATE_LOCAL_ERROR] migrateLocalToRemote failed', e);
   }
 }

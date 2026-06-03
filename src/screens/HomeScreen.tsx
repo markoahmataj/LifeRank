@@ -163,7 +163,7 @@ export function HomeScreen({
             </View>
             <EnergyBar value={(user.score.value / user.score.nextRankAt) * 100} tier={tier} thickness={8}/>
             <View style={styles.progressFoot}>
-              <Text style={styles.footLabel}>APEX VII</Text>
+              <Text style={styles.footLabel}>{tier.name.toUpperCase()}</Text>
               <Text style={[styles.footLabel, { color: surface.textSecondary }]}>
                 ↑ {(user.score.nextRankAt - user.score.value).toFixed(1)} TO PROMOTE
               </Text>

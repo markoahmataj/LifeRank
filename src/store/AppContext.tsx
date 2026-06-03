@@ -372,6 +372,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const userId = session?.user.id;
       if (userId && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        console.log('[AUTH_USER]', { userId, event, provider: session?.user.app_metadata?.provider });
         const [remote, profile] = await Promise.all([
           Sync.fetchRemoteState(userId),
           Sync.fetchProfile(userId),
@@ -394,6 +395,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (remote) {
           // Remote wins. Overlay it onto local state and cache it.
           remoteAppliedRef.current = true;
+          console.log('[HYDRATED_FROM_REMOTE]', {
+            userId,
+            isCalibrated: remote.isCalibrated,
+            score: remote.score.value,
+            logbookEntries: remote.logbook.length,
+            activeMissions: remote.activeMissions.length,
+            handle: profile?.handle,
+          });
           dispatch({
             type: 'HYDRATE',
             payload: {
@@ -414,6 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
         } else if (stateRef.current.isCalibrated) {
           // No remote row yet but we have local data — migrate it up once.
+          console.log('[HYDRATED_FROM_LOCAL]', { userId, reason: 'no remote row, migrating local state' });
           Sync.migrateLocalToRemote(stateRef.current);
         }
       }
