@@ -26,12 +26,8 @@ import { applyCheckIn, type ApplyCheckInResult } from '../design-system/scoringM
 import * as Storage from '../storage/appStorage';
 import { supabase } from '../lib/supabase';
 import * as Sync from '../services/liferankSync';
-import {
-  mockLifeScore,
-  mockCategoryScores,
-  mockActiveMissions,
-  mockBuild,
-} from '../design-system/mockData';
+import { CATEGORY_ORDER } from '../design-system/tokens';
+import { mockBuild } from '../design-system/mockData';
 
 /* ──────────────────────────────────────────────────────────────────────
    STATE SHAPE
@@ -67,7 +63,7 @@ const initialState: AppState = {
   displayName: 'You',
   initial: 'Y',
   score: INITIAL_SCORE,
-  categories: mockCategoryScores.map(c => ({ ...c, value: 5, delta: 0 })),
+  categories: CATEGORY_ORDER.map(id => ({ id, value: 5, delta: 0 })),
   activeMissions: [],
   build: mockBuild,
   rp: 0,

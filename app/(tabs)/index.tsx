@@ -30,6 +30,7 @@ export default function HomeRoute() {
   return (
     <HomeScreen
       user={user}
+      logbook={state.logbook}
       onNotifications={() => router.push('/notifications')}
       onProfile={() => router.push('/profile')}
       onViewAllCategories={() => router.push('/logbook')}

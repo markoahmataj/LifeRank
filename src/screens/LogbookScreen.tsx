@@ -16,7 +16,6 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockLogbook } from '../design-system/mockData';
 
 export interface LogbookScreenProps {
   tier?: RankTier;
@@ -27,7 +26,7 @@ export interface LogbookScreenProps {
 
 export function LogbookScreen({
   tier = getTier('apex'),
-  entries = mockLogbook,
+  entries = [],
   onBack,
   onSelectDay,
 }: LogbookScreenProps) {

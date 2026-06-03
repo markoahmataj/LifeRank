@@ -7,7 +7,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 
-import type { LifeScore, RankTier, UserState } from '../design-system/types';
+import type { LifeScore, LogbookEntry, RankTier, SystemSignal, UserState } from '../design-system/types';
 import { AtmosphereBackground } from '../components/AtmosphereBackground';
 import { RankEmblem } from '../components/RankEmblem';
 import { EnergyBar } from '../components/EnergyBar';
@@ -20,10 +20,43 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, spacing, surface, fonts, alpha, state,
 } from '../design-system/tokens';
-import { mockUser, mockSystemSignals, mockQuickActions } from '../design-system/mockData';
+import { mockUser, mockQuickActions } from '../design-system/mockData';
+
+function computeSystemSignals(score: LifeScore, logbook: LogbookEntry[]): SystemSignal[] {
+  const momentum = Math.round(Math.max(0, Math.min(100, 50 + score.delta * 25)));
+  const control  = Math.min(100, score.streak * 5);
+  const friction = Math.max(0, 100 - control);
+  return [
+    {
+      id: 'momentum',
+      label: 'Momentum',
+      value: momentum,
+      display: score.delta > 0.3 ? 'HI' : score.delta < -0.1 ? 'LO' : 'MID',
+      color: '#34d399',
+      derivation: `Score slope · ${score.delta >= 0 ? '+' : ''}${score.delta.toFixed(1)} this check-in`,
+    },
+    {
+      id: 'control',
+      label: 'Control',
+      value: control,
+      display: String(control),
+      color: '#22D3EE',
+      derivation: `${score.streak}-day streak`,
+    },
+    {
+      id: 'friction',
+      label: 'Friction',
+      value: friction,
+      display: friction < 20 ? 'LOW' : friction < 50 ? 'MID' : 'HI',
+      color: '#FF2D5C',
+      derivation: 'Derived from streak consistency',
+    },
+  ];
+}
 
 export interface HomeScreenProps {
   user?: UserState;
+  logbook?: LogbookEntry[];
   onNotifications?: () => void;
   onProfile?: () => void;
   onViewAllCategories?: () => void;
@@ -36,6 +69,7 @@ export interface HomeScreenProps {
 
 export function HomeScreen({
   user = mockUser,
+  logbook = [],
   onNotifications,
   onProfile,
   onViewAllCategories,
@@ -47,6 +81,7 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const tier: RankTier = getTier(user.score.tier);
   const activeMission = user.activeMissions[0];
+  const signals = computeSystemSignals(user.score, logbook);
 
   return (
     <View style={styles.root}>
@@ -130,7 +165,7 @@ export function HomeScreen({
 
           {/* SYSTEM SIGNALS */}
           <View style={styles.vitalsRow}>
-            <SystemSignals signals={mockSystemSignals} showLockedHealthRibbon/>
+            <SystemSignals signals={signals} showLockedHealthRibbon/>
           </View>
         </View>
 
@@ -177,7 +212,7 @@ export function HomeScreen({
             <StreakCard streak={user.score.streak} tier={tier}/>
           </Pressable>
           <Pressable style={{ flex: 1 }} onPress={onTrendPress}>
-            <TrendCard/>
+            <TrendCard score={user.score} logbook={logbook}/>
           </Pressable>
         </View>
 
@@ -255,32 +290,53 @@ function StreakCard({ streak, tier }: { streak: number; tier: RankTier }) {
   );
 }
 
-function TrendCard() {
-  const series = [7.6, 7.8, 7.7, 8.0, 8.1, 8.3, 8.4];
+function TrendCard({ score, logbook }: { score: LifeScore; logbook: LogbookEntry[] }) {
+  const recent7 = [...logbook].slice(0, 7).reverse();
+  const series = recent7.length >= 2 ? recent7.map(e => e.lifeScore) : null;
+  const delta = score.delta;
+  const deltaStr = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`;
+  const W = 100, H = 30;
+
+  if (!series) {
+    return (
+      <HudCard>
+        <View style={styles.streakHeader}>
+          <View style={[styles.dot, { backgroundColor: state.win }]}/>
+          <Text style={styles.smallCaption}>7-DAY TREND</Text>
+        </View>
+        <Text style={[styles.trendValue, { color: surface.textTertiary }]}>—</Text>
+        <Text style={styles.streakNote}>No data yet</Text>
+      </HudCard>
+    );
+  }
+
   const min = Math.min(...series);
   const max = Math.max(...series);
-  const W = 100, H = 30;
   const pts = series.map((v, i) => `${(i / (series.length - 1)) * W},${H - ((v - min) / (max - min || 1)) * H}`).join(' ');
+  const periodDelta = +(series[series.length - 1] - series[0]).toFixed(1);
+  const periodStr = `${periodDelta >= 0 ? '+' : ''}${periodDelta.toFixed(1)}`;
+  const trendColor = delta >= 0 ? state.win : state.break;
+
   return (
     <HudCard>
       <View style={styles.streakHeader}>
-        <View style={[styles.dot, { backgroundColor: state.win }]}/>
+        <View style={[styles.dot, { backgroundColor: trendColor }]}/>
         <Text style={styles.smallCaption}>7-DAY TREND</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-        <Text style={styles.trendValue}>+0.3</Text>
-        <Text style={styles.trendDelta}>↑ 3.8%</Text>
+        <Text style={styles.trendValue}>{periodStr}</Text>
+        <Text style={[styles.trendDelta, { color: trendColor }]}>{delta >= 0 ? '↑' : '↓'} {deltaStr}</Text>
       </View>
       <View style={{ marginTop: 6 }}>
         <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
           <Defs>
             <SvgLG id="trendArea" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={state.win} stopOpacity={0.5}/>
-              <Stop offset="100%" stopColor={state.win} stopOpacity={0}/>
+              <Stop offset="0%" stopColor={trendColor} stopOpacity={0.5}/>
+              <Stop offset="100%" stopColor={trendColor} stopOpacity={0}/>
             </SvgLG>
           </Defs>
           <Polyline points={`0,${H} ${pts} ${W},${H}`} fill="url(#trendArea)"/>
-          <Polyline points={pts} fill="none" stroke={state.win} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"/>
+          <Polyline points={pts} fill="none" stroke={trendColor} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"/>
         </Svg>
       </View>
     </HudCard>

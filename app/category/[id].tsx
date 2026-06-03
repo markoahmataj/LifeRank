@@ -17,6 +17,8 @@ export default function CategoryDetailRoute() {
     <CategoryDetailScreen
       tier={tier}
       categoryId={(id as CategoryId) ?? 'discipline'}
+      categoryScores={state.categories}
+      logbook={state.logbook}
       onBack={() => router.back()}
     />
   );

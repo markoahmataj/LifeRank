@@ -15,7 +15,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, state, radius,
 } from '../design-system/tokens';
-import { mockTrend30D, mockCategoryScores, mockPersonalRecords, mockLifeScore } from '../design-system/mockData';
+import { mockLifeScore, mockCategoryScores } from '../design-system/mockData';
 
 export interface StatsScreenProps {
   tier?: RankTier;
@@ -36,13 +36,15 @@ export function StatsScreen({
 }: StatsScreenProps) {
   const [range, setRange] = useState<StatRange>('M');
 
+  const hasEnoughData = logbook && logbook.length >= 2;
   const series = useMemo(() => {
-    if (logbook && logbook.length >= 2) {
+    if (hasEnoughData) {
       // Logbook is newest-first — reverse for chronological order.
-      return [...logbook].slice(0, 30).reverse().map(e => e.lifeScore);
+      return [...logbook!].slice(0, 30).reverse().map(e => e.lifeScore);
     }
-    return mockTrend30D.map(p => p.score);
-  }, [logbook]);
+    // Not enough check-ins yet — show a flat line at the current score
+    return [score.value, score.value];
+  }, [logbook, hasEnoughData, score.value]);
   const { pathLine, pathArea, lastPt, W, H } = useChartGeometry(series, 320, 110);
 
   const weakest = useMemo(() => {
@@ -214,10 +216,35 @@ export function StatsScreen({
           </HudCard>
         </View>
 
-        {/* PERSONAL RECORDS */}
-        <SectionHeader index="04" title="Records · Q4"/>
+        {/* PERSONAL RECORDS — derived from real logbook */}
+        <SectionHeader index="04" title="Records"/>
         <View style={[styles.padded, { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }]}>
-          {mockPersonalRecords.map(pr => (
+          {[
+            {
+              label: 'CURRENT STREAK',
+              value: `${score.streak}d`,
+              delta: score.streak > 0 ? 'keep going' : 'start today',
+              color: '#FF2D5C',
+            },
+            {
+              label: 'PERSONAL BEST',
+              value: score.pbScore != null ? score.pbScore.toFixed(1) : score.value.toFixed(1),
+              delta: 'highest score',
+              color: '#22D3EE',
+            },
+            {
+              label: 'CHECK-INS',
+              value: String(logbook?.length ?? 0),
+              delta: 'total logged',
+              color: '#C026D3',
+            },
+            {
+              label: 'SCORE NOW',
+              value: score.value.toFixed(1),
+              delta: `${score.delta >= 0 ? '+' : ''}${score.delta.toFixed(1)} this check-in`,
+              color: '#7C3AED',
+            },
+          ].map(pr => (
             <View key={pr.label} style={{ width: '48%' }}>
               <HudCard padding={{ x: 12, y: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>

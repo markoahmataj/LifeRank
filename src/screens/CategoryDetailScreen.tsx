@@ -7,7 +7,7 @@ import React, { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Polyline, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 
-import type { CategoryId, RankTier } from '../design-system/types';
+import type { CategoryId, CategoryScore, LogbookEntry, RankTier } from '../design-system/types';
 import { AtmosphereBackground } from '../components/AtmosphereBackground';
 import { HudCard } from '../components/HudCard';
 import { EnergyBar } from '../components/EnergyBar';
@@ -17,28 +17,33 @@ import { MissionCard } from '../components/MissionCard';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import {
-  mockCategoryScores, mockAvailableMissions, mockLogbook,
-} from '../design-system/mockData';
+import { mockAvailableMissions } from '../design-system/mockData';
 
 export interface CategoryDetailScreenProps {
   tier?: RankTier;
   categoryId?: CategoryId;
+  categoryScores?: CategoryScore[];
+  logbook?: LogbookEntry[];
   onBack?: () => void;
 }
+
+const ZERO_SCORE: CategoryScore = { id: 'discipline', value: 0, delta: 0 };
 
 export function CategoryDetailScreen({
   tier = getTier('apex'),
   categoryId = 'discipline',
+  categoryScores,
+  logbook,
   onBack,
 }: CategoryDetailScreenProps) {
   const cat = categories[categoryId];
-  const score = mockCategoryScores.find(c => c.id === categoryId)!;
+  const score = categoryScores?.find(c => c.id === categoryId) ?? { ...ZERO_SCORE, id: categoryId };
 
   const trail7  = useMemo(() => makeTrail(score.value, score.delta, 7),  [score]);
   const trail30 = useMemo(() => makeTrail(score.value, score.delta, 30), [score]);
 
   const relatedMissions = mockAvailableMissions.filter(m => m.category === categoryId);
+  const recentEntries = (logbook ?? []).slice(0, 5);
 
   return (
     <View style={styles.root}>
@@ -158,7 +163,13 @@ export function CategoryDetailScreen({
         {/* RECENT ENTRIES */}
         <SectionHeader index="06" title="Recent Check-ins"/>
         <View style={[styles.padded, { gap: 6 }]}>
-          {mockLogbook.slice(0, 5).map(entry => {
+          {recentEntries.length === 0 ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.mono, fontSize: 10, color: surface.textMuted, letterSpacing: 1 }}>
+                NO CHECK-INS YET
+              </Text>
+            </View>
+          ) : recentEntries.map(entry => {
             const c = entry.categoryScores.find(c => c.id === categoryId);
             return (
               <View key={entry.date} style={styles.entryRow}>

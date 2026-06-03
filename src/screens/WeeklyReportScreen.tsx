@@ -16,7 +16,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 import {
   categories, getTier, surface, spacing, fonts, alpha, radius, state,
 } from '../design-system/tokens';
-import { mockWeeklyReport, mockTrend30D } from '../design-system/mockData';
+import { EmptyState } from '../components/EmptyState';
 
 export interface WeeklyReportScreenProps {
   tier?: RankTier;
@@ -27,16 +27,42 @@ export interface WeeklyReportScreenProps {
 
 export function WeeklyReportScreen({
   tier = getTier('apex'),
-  report = mockWeeklyReport,
+  report,
   onBack,
   onShare,
 }: WeeklyReportScreenProps) {
+  if (!report) {
+    return (
+      <View style={styles.root}>
+        <AtmosphereBackground tier={tier}/>
+        <View style={styles.header}>
+          <Pressable onPress={onBack} style={styles.iconBtn}>
+            <Svg width={9} height={14} viewBox="0 0 9 14"><Path d="M7 1L1 7l6 6" stroke="#fff" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" fill="none"/></Svg>
+          </Pressable>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={styles.headerCap}>WEEKLY REPORT</Text>
+            <Text style={styles.headerSub}>OFFLINE</Text>
+          </View>
+          <View style={{ width: 36 }}/>
+        </View>
+        <View style={{ paddingHorizontal: 24, marginTop: 40 }}>
+          <EmptyState
+            tier={tier}
+            status="STATUS · COMPILING"
+            title="Report not ready."
+            body="Weekly reports compile after 7 consecutive check-ins. Keep your streak alive and the system will deliver your first debrief."
+          />
+        </View>
+      </View>
+    );
+  }
+
   const positive  = report.delta >= 0;
   const strongest = categories[report.strongest];
   const weakest   = categories[report.weakest];
   const focus     = categories[report.recommendedFocus];
 
-  const weekTrend = mockTrend30D.slice(-7).map(p => p.score);
+  const weekTrend = [report.startScore, report.endScore];
 
   return (
     <View style={styles.root}>

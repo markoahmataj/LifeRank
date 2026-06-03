@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { NotificationsScreen } from '@/src/screens/NotificationsScreen';
 import { useApp } from '@/src/store/AppContext';
 import { getTier } from '@/src/design-system/tokens';
-import { mockNotifications } from '@/src/design-system/mockData';
 import type { LRNotification } from '@/src/design-system/types';
 
 export default function NotificationsRoute() {
@@ -36,7 +35,7 @@ export default function NotificationsRoute() {
   return (
     <NotificationsScreen
       tier={tier}
-      notifications={mockNotifications}
+      notifications={[]}
       onBack={() => router.back()}
       onSelect={handleSelect}
     />

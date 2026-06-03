@@ -64,9 +64,13 @@ export async function ensureProfile(
       .eq('id', params.userId)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[PROFILE_FETCH_ERROR]', error);
+      throw error;
+    }
 
     if (existing) {
+      console.log('[PROFILE_FETCH_SUCCESS]', { userId: params.userId, created: false, handle: existing.handle });
       return {
         created: false,
         handle: existing.handle,
@@ -82,7 +86,10 @@ export async function ensureProfile(
       provider_name: params.providerName,
       avatar_url: params.avatarUrl ?? null,
     });
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error('[PROFILE_FETCH_ERROR] profile insert failed', insertError);
+      throw insertError;
+    }
 
     // Seed default settings alongside the new profile.
     await supabase
@@ -90,13 +97,16 @@ export async function ensureProfile(
       .insert({ id: params.userId })
       .then(({ error: settingsError }) => {
         if (settingsError) {
-          console.warn('[liferankSync] default settings insert failed', settingsError.message);
+          console.error('[SETTINGS_FETCH_ERROR] default settings insert failed', settingsError);
+        } else {
+          console.log('[SETTINGS_FETCH_SUCCESS]', { userId: params.userId });
         }
       });
 
+    console.log('[PROFILE_FETCH_SUCCESS]', { userId: params.userId, created: true, handle });
     return { created: true, handle, displayName: params.displayName };
   } catch (e) {
-    console.warn('[liferankSync] ensureProfile failed', (e as Error).message);
+    console.error('[PROFILE_FETCH_ERROR]', e);
     return null;
   }
 }
@@ -107,6 +117,7 @@ export async function ensureProfile(
 export async function syncLifeState(state: AppState): Promise<void> {
   const userId = await currentUserId();
   if (!userId) return;
+  console.log('[LIFESTATE_SYNC_START]', { userId, isCalibrated: state.isCalibrated });
   try {
     const { error } = await supabase.from('life_state').upsert(
       {
@@ -127,9 +138,13 @@ export async function syncLifeState(state: AppState): Promise<void> {
       },
       { onConflict: 'user_id' },
     );
-    if (error) throw error;
+    if (error) {
+      console.error('[LIFESTATE_SYNC_ERROR]', error);
+      throw error;
+    }
+    console.log('[LIFESTATE_SYNC_SUCCESS]', { userId });
   } catch (e) {
-    console.warn('[liferankSync] syncLifeState failed', (e as Error).message);
+    console.error('[LIFESTATE_SYNC_ERROR]', e);
   }
 }
 
@@ -138,7 +153,11 @@ export async function syncLifeState(state: AppState): Promise<void> {
    ──────────────────────────────────────────────────────────────────── */
 export async function insertCheckin(entry: LogbookEntry, rpEarned: number): Promise<void> {
   const userId = await currentUserId();
-  if (!userId) return;
+  if (!userId) {
+    console.warn('[CHECKIN_SYNC_ERROR] No authenticated user — skipping checkin write');
+    return;
+  }
+  console.log('[CHECKIN_SYNC_START]', { userId, date: entry.date, lifeScore: entry.lifeScore });
   try {
     // Upsert, NOT plain insert — enforces one check-in per (user_id, date).
     // A second submission on the same calendar day updates the existing row.
@@ -158,9 +177,13 @@ export async function insertCheckin(entry: LogbookEntry, rpEarned: number): Prom
       },
       { onConflict: 'user_id,date' },
     );
-    if (error) throw error;
+    if (error) {
+      console.error('[CHECKIN_SYNC_ERROR]', error);
+      throw error;
+    }
+    console.log('[CHECKIN_SYNC_SUCCESS]', { date: entry.date });
   } catch (e) {
-    console.warn('[liferankSync] insertCheckin failed', (e as Error).message);
+    console.error('[CHECKIN_SYNC_ERROR]', e);
   }
 }
 
@@ -181,7 +204,11 @@ export async function insertMissionEvent(
   userId: string,
   event: MissionEventPayload,
 ): Promise<void> {
-  if (!isSupabaseConfigured || !userId) return;
+  if (!isSupabaseConfigured || !userId) {
+    console.warn('[MISSION_SYNC_ERROR] Supabase not configured or no userId');
+    return;
+  }
+  console.log('[MISSION_SYNC_START]', { userId, missionId: event.missionId, eventType: event.eventType });
   try {
     const { error } = await supabase.from('mission_events').insert({
       user_id: userId,
@@ -191,9 +218,13 @@ export async function insertMissionEvent(
       rp_earned: event.rpEarned ?? 0,
       score_impact: event.scoreImpact ?? 0,
     });
-    if (error) throw error;
+    if (error) {
+      console.error('[MISSION_SYNC_ERROR]', error);
+      throw error;
+    }
+    console.log('[MISSION_SYNC_SUCCESS]', { missionId: event.missionId, eventType: event.eventType });
   } catch (e) {
-    console.warn('[liferankSync] insertMissionEvent failed', (e as Error).message);
+    console.error('[MISSION_SYNC_ERROR]', e);
   }
 }
 
@@ -298,7 +329,7 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
         }
       : null;
 
-    return {
+    const result: RemoteState = {
       isCalibrated: life.is_calibrated,
       score,
       categories: (life.categories ?? []) as CategoryScore[],
@@ -309,8 +340,10 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
       settings,
       updatedAt: life.updated_at ?? null,
     };
+    console.log('[HYDRATED_FROM_REMOTE]', { userId, isCalibrated: result.isCalibrated, checkins: logbook.length });
+    return result;
   } catch (e) {
-    console.warn('[liferankSync] fetchRemoteState failed', (e as Error).message);
+    console.error('[HYDRATED_FROM_REMOTE] fetchRemoteState failed', e);
     return null;
   }
 }
