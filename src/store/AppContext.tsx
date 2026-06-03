@@ -381,6 +381,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           Sync.fetchProfile(userId),
         ]);
 
+        // For web OAuth users, profile creation happens here (not in AuthProvider
+        // which only handles the native flows). Safe to call on every sign-in —
+        // ensureProfile is idempotent and returns early when the row already exists.
+        if (!profile && session) {
+          const meta = session.user.user_metadata ?? {};
+          const provider = (session.user.app_metadata?.provider ?? 'google') as 'google' | 'apple';
+          await Sync.ensureProfile({
+            userId,
+            displayName: String(meta.full_name ?? meta.name ?? 'LifeRanker'),
+            providerName: provider,
+            avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
+          });
+        }
+
         if (remote) {
           // Remote wins. Overlay it onto local state and cache it.
           remoteAppliedRef.current = true;

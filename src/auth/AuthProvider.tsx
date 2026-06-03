@@ -72,16 +72,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  /* ── Google (native ID-token flow) ──────────────────────────────────── */
+  /* ── Google ─────────────────────────────────────────────────────────── */
+  // On web: browser OAuth redirect via Supabase (no native SDK).
+  // On native: ID-token flow via @react-native-google-signin (dev build only).
   const signInWithGoogle = useCallback(async () => {
     if (!isSupabaseConfigured) {
       console.warn('[auth] Supabase not configured — cannot sign in with Google.');
       return;
     }
+
     if (Platform.OS === 'web') {
-      console.warn('[auth] Google sign-in requires a development build (not web/Expo Go).');
-      return;
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) {
+        console.warn('[auth] Google OAuth failed:', error.message);
+        throw error;
+      }
+      return; // browser will navigate away to Google, then back to /auth/callback
     }
+
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();

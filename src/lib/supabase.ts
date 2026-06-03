@@ -93,7 +93,10 @@ export const supabase = createClient(
       storage: new LargeSecureStore(),
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      // On web, Supabase must parse the ?code= query param returned by the
+      // OAuth redirect and exchange it for a session automatically. On native
+      // we handle deep-link auth ourselves, so this must stay false there.
+      detectSessionInUrl: Platform.OS === 'web',
     },
   },
 );

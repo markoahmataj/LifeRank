@@ -60,6 +60,7 @@ function RootLayoutInner() {
       <RouteGuard />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#080C14' } }}>
         <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="mission/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />

@@ -119,13 +119,31 @@ with your reversed iOS Client ID from step 4a‑2.
 
 ---
 
-## 6. URL configuration (optional, browser fallback only)
+## 6. URL configuration (required for web auth)
 
-- **Authentication → URL Configuration**
-  - Site URL: `https://localhost:8081` for web dev (update to production later).
-  - The native Google + Apple flows do **not** use redirect URLs — they go
-    through `signInWithIdToken` directly. This section only matters if a browser
-    fallback is added later.
+Web OAuth (Google on Vercel) uses a browser redirect. Supabase must know the
+allowed callback URLs.
+
+**Authentication → URL Configuration:**
+
+| Field | Value |
+|---|---|
+| Site URL | `https://getliferank.app` |
+| Additional redirect URLs | `https://getliferank.app/auth/callback` |
+| Additional redirect URLs | `https://<your-preview>.vercel.app/auth/callback` (add your current Vercel preview URL during testing) |
+| Additional redirect URLs | `http://localhost:8081/auth/callback` (for local web dev) |
+
+The native iOS flows (Google via native SDK, Apple) do **not** use these URLs —
+they go through `signInWithIdToken` directly and ignore redirect configuration.
+
+**Google Cloud Console — also add the Supabase callback as an authorized redirect:**
+
+In your **Web OAuth Client → Authorized redirect URIs**, confirm this URI is present:
+```
+https://firghyksynpcyjpdvzkr.supabase.co/auth/v1/callback
+```
+This is the URI Supabase uses server-side to complete the OAuth exchange before
+handing the session back to your app at `/auth/callback`.
 
 ---
 
