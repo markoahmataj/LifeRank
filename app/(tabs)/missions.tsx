@@ -17,7 +17,7 @@ export default function MissionsRoute() {
       tier={tier}
       activeMissions={state.activeMissions}
       availableMissions={mockAvailableMissions}
-      completedMissions={[]}
+      completedMissions={state.completedMissions}
       onMissionPress={(id) => router.push(`/mission/${id}`)}
     />
   );

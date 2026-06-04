@@ -9,16 +9,18 @@ import { DEFAULT_USER_SETTINGS } from '../design-system/types';
    KEYS
    ──────────────────────────────────────────────────────────────────── */
 const KEYS = {
-  IS_CALIBRATED:      'lr:isCalibrated',
-  LIFE_SCORE:         'lr:lifeScore',
-  CATEGORY_SCORES:    'lr:categoryScores',
-  ACTIVE_MISSIONS:    'lr:activeMissions',
-  LOGBOOK:            'lr:logbook',
-  USER_HANDLE:        'lr:handle',
-  USER_DISPLAY_NAME:  'lr:displayName',
-  USER_BUILD:         'lr:build',
-  USER_SETTINGS:      'lr:userSettings',
-  RP:                 'lr:rp',
+  IS_CALIBRATED:       'lr:isCalibrated',
+  LIFE_SCORE:          'lr:lifeScore',
+  CATEGORY_SCORES:     'lr:categoryScores',
+  ACTIVE_MISSIONS:     'lr:activeMissions',
+  COMPLETED_MISSIONS:  'lr:completedMissions',
+  LOGBOOK:             'lr:logbook',
+  USER_HANDLE:         'lr:handle',
+  USER_DISPLAY_NAME:   'lr:displayName',
+  USER_BUILD:          'lr:build',
+  USER_SETTINGS:       'lr:userSettings',
+  RP:                  'lr:rp',
+  JOINED_AT:           'lr:joinedAt',
 } as const;
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -94,6 +96,17 @@ export async function setActiveMissions(missions: Mission[]): Promise<void> {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   COMPLETED MISSIONS
+   ──────────────────────────────────────────────────────────────────── */
+export async function getCompletedMissions(): Promise<Mission[] | null> {
+  return getJson<Mission[]>(KEYS.COMPLETED_MISSIONS);
+}
+
+export async function setCompletedMissions(missions: Mission[]): Promise<void> {
+  return setJson(KEYS.COMPLETED_MISSIONS, missions);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    LOGBOOK
    ──────────────────────────────────────────────────────────────────── */
 export async function getLogbook(): Promise<LogbookEntry[] | null> {
@@ -135,6 +148,14 @@ export async function getUserBuild(): Promise<UserBuild | null> {
 
 export async function setUserBuild(build: UserBuild): Promise<void> {
   return setJson(KEYS.USER_BUILD, build);
+}
+
+export async function getJoinedAt(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.JOINED_AT);
+}
+
+export async function setJoinedAt(value: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.JOINED_AT, value);
 }
 
 /* ──────────────────────────────────────────────────────────────────────

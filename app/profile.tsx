@@ -23,9 +23,11 @@ export default function ProfileRoute() {
       build={state.build}
       rp={state.rp}
       favoriteCategory={fav}
+      joinedAt={state.joinedAt}
       totalCheckIns={state.logbook.length}
       longestStreak={state.score.streak}
       personalBest={state.score.pbScore ?? state.score.value}
+      completedOperations={state.completedMissions.length}
     />
   );
 }

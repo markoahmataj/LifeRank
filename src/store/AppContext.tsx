@@ -22,7 +22,7 @@ import type {
   UserSettings,
 } from '../design-system/types';
 import { DEFAULT_USER_SETTINGS } from '../design-system/types';
-import { applyCheckIn, type ApplyCheckInResult } from '../design-system/scoringModel';
+import { applyCheckIn, tierForScore, nextPromotionScore, rpForMissionComplete, type ApplyCheckInResult } from '../design-system/scoringModel';
 import * as Storage from '../storage/appStorage';
 import { supabase } from '../lib/supabase';
 import * as Sync from '../services/liferankSync';
@@ -39,9 +39,11 @@ export interface AppState {
   handle: string;
   displayName: string;
   initial: string;
+  joinedAt?: string;
   score: LifeScore;
   categories: CategoryScore[];
   activeMissions: Mission[];
+  completedMissions: Mission[];
   build: UserBuild;
   rp: number;
   logbook: LogbookEntry[];
@@ -62,9 +64,11 @@ const initialState: AppState = {
   handle: '@you',
   displayName: 'You',
   initial: 'Y',
+  joinedAt: undefined,
   score: INITIAL_SCORE,
   categories: CATEGORY_ORDER.map(id => ({ id, value: 5, delta: 0 })),
   activeMissions: [],
+  completedMissions: [],
   build: mockBuild,
   rp: 0,
   logbook: [],
@@ -212,11 +216,40 @@ function reducer(state: AppState, action: AppAction): AppState {
         activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
       };
 
-    case 'COMPLETE_MISSION':
+    case 'COMPLETE_MISSION': {
+      const mission = state.activeMissions.find(m => m.id === action.payload.missionId);
+      if (!mission) {
+        return {
+          ...state,
+          activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
+        };
+      }
+      const prevScore  = state.score.value;
+      const rewardScore = mission.rewardScore ?? 0;
+      const rewardRP    = rpForMissionComplete(mission);
+      const rawNew      = Math.round((prevScore + rewardScore) * 10) / 10;
+      const newScore    = Math.min(10, Math.max(0, rawNew));
+      const newTier     = tierForScore(newScore);
+      const newDelta    = Math.round((newScore - prevScore) * 10) / 10;
+      const newPbScore  = Math.max(state.score.pbScore ?? 0, newScore);
+      const alreadyDone = state.completedMissions.some(m => m.id === action.payload.missionId);
       return {
         ...state,
         activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
+        completedMissions: alreadyDone
+          ? state.completedMissions
+          : [...state.completedMissions, { ...mission, status: 'completed' as const }],
+        score: {
+          ...state.score,
+          value:      newScore,
+          delta:      newDelta,
+          tier:       newTier,
+          nextRankAt: nextPromotionScore(newTier),
+          pbScore:    newPbScore,
+        },
+        rp: state.rp + rewardRP,
       };
+    }
 
     case 'TOGGLE_MISSION_TASK':
       return {
@@ -317,23 +350,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         score,
         categories,
         activeMissions,
+        completedMissions,
         logbook,
         handle,
         displayName,
         build,
         rp,
         settings,
+        joinedAt,
       ] = await Promise.all([
         Storage.getIsCalibrated(),
         Storage.getLifeScore(),
         Storage.getCategoryScores(),
         Storage.getActiveMissions(),
+        Storage.getCompletedMissions(),
         Storage.getLogbook(),
         Storage.getHandle(),
         Storage.getDisplayName(),
         Storage.getUserBuild(),
         Storage.getRP(),
         Storage.getUserSettings(),
+        Storage.getJoinedAt(),
       ]);
 
       // Remote already won this race — don't overwrite it with local cache.
@@ -346,6 +383,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...(score && { score }),
           ...(categories && { categories }),
           ...(activeMissions && { activeMissions }),
+          ...(completedMissions && { completedMissions }),
           ...(logbook && { logbook }),
           ...(handle && { handle }),
           ...(displayName && {
@@ -355,6 +393,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...(build && { build }),
           ...(settings && { settings }),
           rp,
+          ...(joinedAt && { joinedAt }),
         },
       });
     })();
@@ -410,6 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               score: remote.score,
               categories: remote.categories,
               activeMissions: remote.activeMissions,
+              completedMissions: remote.completedMissions,
               ...(remote.build && { build: remote.build }),
               rp: remote.rp,
               logbook: remote.logbook,
@@ -418,6 +458,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 handle: profile.handle,
                 displayName: profile.displayName,
                 initial: profile.displayName.charAt(0).toUpperCase(),
+                joinedAt: profile.joinedAt,
               }),
             },
           });
@@ -442,12 +483,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     Storage.setLifeScore(state.score);
     Storage.setCategoryScores(state.categories);
     Storage.setActiveMissions(state.activeMissions);
+    Storage.setCompletedMissions(state.completedMissions);
     Storage.setHandle(state.handle);
     Storage.setDisplayName(state.displayName);
     Storage.setUserBuild(state.build);
     Storage.setRP(state.rp);
     Storage.setLogbook(state.logbook);
     Storage.setUserSettings(state.settings);
+    if (state.joinedAt) Storage.setJoinedAt(state.joinedAt);
 
     // Write-through to Supabase (fire-and-forget). Gated so the initial
     // hydrate doesn't push stale local data over fresh remote data.

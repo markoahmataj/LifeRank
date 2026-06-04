@@ -51,6 +51,8 @@ export default function MissionDetailRoute() {
         toggleMissionTask(mission.id, taskId);
       }}
       onComplete={(m) => {
+        const prevScore = state.score.value;
+        const prevTier  = state.score.tier;
         completeMission(m.id);
         if (user) {
           Sync.insertMissionEvent(user.id, {
@@ -61,7 +63,7 @@ export default function MissionDetailRoute() {
             scoreImpact: m.rewardScore,
           });
         }
-        router.replace(`/mission/complete/${m.id}`);
+        router.replace(`/mission/complete/${m.id}?prevScore=${prevScore}&prevTier=${prevTier}`);
       }}
       onContinue={() => router.back()}
       onViewResult={(m) => router.push(`/mission/complete/${m.id}`)}

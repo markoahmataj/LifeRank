@@ -177,7 +177,7 @@ export function applyCheckIn(args: ApplyCheckInArgs): ApplyCheckInResult {
   };
 }
 
-function nextPromotionScore(tier: RankTierId): number {
+export function nextPromotionScore(tier: RankTierId): number {
   const order: RankTierId[] = [
     'dormant','unstable','operational','ascendant','apex','mythic','zenith',
   ];

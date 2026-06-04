@@ -262,6 +262,7 @@ export interface RemoteState {
   score: LifeScore;
   categories: CategoryScore[];
   activeMissions: Mission[];
+  completedMissions: Mission[];
   build: UserBuild | null;
   rp: number;
   logbook: LogbookEntry[];
@@ -296,6 +297,27 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
       .order('date', { ascending: false })
       .limit(CHECKIN_FETCH_LIMIT);
     if (checkinsError) throw checkinsError;
+
+    const { data: missionEvents, error: missionEventsError } = await supabase
+      .from('mission_events')
+      .select('mission_id, mission_snapshot')
+      .eq('user_id', userId)
+      .eq('event_type', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (missionEventsError) {
+      console.error('[MISSION_EVENTS_FETCH_ERROR]', { userId, error: missionEventsError });
+    } else {
+      console.log('[MISSION_EVENTS_FETCH_SUCCESS]', { userId, count: missionEvents?.length ?? 0 });
+    }
+
+    const seenMissionIds = new Set<string>();
+    const completedMissions: Mission[] = [];
+    for (const event of missionEvents ?? []) {
+      if (!event.mission_snapshot || seenMissionIds.has(event.mission_id)) continue;
+      seenMissionIds.add(event.mission_id);
+      completedMissions.push({ ...(event.mission_snapshot as Mission), status: 'completed' });
+    }
 
     const { data: settingsRow, error: settingsError } = await supabase
       .from('user_settings')
@@ -346,6 +368,7 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
       score,
       categories: (life.categories ?? []) as CategoryScore[],
       activeMissions: (life.active_missions ?? []) as Mission[],
+      completedMissions,
       build: (life.build ?? null) as UserBuild | null,
       rp: life.rp,
       logbook,
