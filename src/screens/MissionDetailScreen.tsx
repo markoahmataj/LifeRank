@@ -50,7 +50,11 @@ export function MissionDetailScreen({
   const isActive    = mission.status === 'active';
   const isLocked    = mission.status === 'locked';
   const isCompleted = mission.status === 'completed';
-  const isReadyToComplete = isActive && (mission.progress ?? 0) >= 100;
+  const hasTasks    = (mission.tasks?.length ?? 0) > 0;
+  // Task-based missions complete when every task is done (progress 100).
+  // Taskless missions — the current catalog — can be marked complete manually
+  // once accepted, so Compete is no longer a dead branch.
+  const isReadyToComplete = isActive && (!hasTasks || (mission.progress ?? 0) >= 100);
 
   return (
     <View style={styles.root}>

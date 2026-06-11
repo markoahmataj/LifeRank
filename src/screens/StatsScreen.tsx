@@ -19,6 +19,14 @@ import type { LifeScore as LifeScoreType } from '../design-system/types';
 
 const ZERO_SCORE: LifeScoreType = { value: 0, delta: 0, tier: 'dormant', nextRankAt: 3.0, streak: 0 };
 
+// How many of the (newest-first) logbook entries each range shows.
+const RANGE_LIMIT: Record<StatRange, number> = {
+  W: 7, M: 30, '3M': 90, Y: 365, ALL: Number.MAX_SAFE_INTEGER,
+};
+const RANGE_START_LABEL: Record<StatRange, string> = {
+  W: '7D AGO', M: '30D AGO', '3M': '90D AGO', Y: '1Y AGO', ALL: 'ALL TIME',
+};
+
 export interface StatsScreenProps {
   tier?: RankTier;
   onBack?: () => void;
@@ -41,12 +49,13 @@ export function StatsScreen({
   const hasEnoughData = logbook && logbook.length >= 2;
   const series = useMemo(() => {
     if (hasEnoughData) {
-      // Logbook is newest-first — reverse for chronological order.
-      return [...logbook!].slice(0, 30).reverse().map(e => e.lifeScore);
+      // Logbook is newest-first — take the selected range window, then reverse
+      // into chronological order for the chart.
+      return [...logbook!].slice(0, RANGE_LIMIT[range]).reverse().map(e => e.lifeScore);
     }
     // Not enough check-ins yet — show a flat line at the current score
     return [score.value, score.value];
-  }, [logbook, hasEnoughData, score.value]);
+  }, [logbook, hasEnoughData, score.value, range]);
   const { pathLine, pathArea, lastPt, W, H } = useChartGeometry(series, 320, 110);
 
   const weakest = useMemo(() => {
@@ -154,8 +163,7 @@ export function StatsScreen({
               <Circle cx={lastPt[0]} cy={lastPt[1]} r={4.5} fill={tier.primary}/>
               <Circle cx={lastPt[0]} cy={lastPt[1]} r={2} fill="#fff"/>
 
-              <SvgText x={0}   y={H + 18} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily={fonts.mono}>30D AGO</SvgText>
-              <SvgText x={W/2} y={H + 18} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily={fonts.mono} textAnchor="middle">15D</SvgText>
+              <SvgText x={0}   y={H + 18} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily={fonts.mono}>{RANGE_START_LABEL[range]}</SvgText>
               <SvgText x={W}   y={H + 18} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily={fonts.mono} textAnchor="end">TODAY</SvgText>
             </Svg>
           </HudCard>

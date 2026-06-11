@@ -187,6 +187,31 @@ export async function insertCheckin(entry: LogbookEntry, rpEarned: number): Prom
   }
 }
 
+/**
+ * Patch only the completed_mission_ids column of an existing check-in row.
+ * Used when a mission is completed on a day that already has a check-in, so the
+ * logbook's "completed operations" line survives a remote reload. No-ops when
+ * there is no row for the given date (e.g. completion before the day's check-in).
+ */
+export async function updateCheckinCompletedMissions(
+  date: string,
+  completedMissionIds: string[],
+): Promise<void> {
+  const userId = await currentUserId();
+  if (!userId) return;
+  try {
+    const { error } = await supabase
+      .from('checkins')
+      .update({ completed_mission_ids: completedMissionIds })
+      .eq('user_id', userId)
+      .eq('date', date);
+    if (error) throw error;
+    console.log('[CHECKIN_UPDATE_SUCCESS]', { date, completedMissionIds });
+  } catch (e) {
+    console.error('[CHECKIN_UPDATE_ERROR] updateCheckinCompletedMissions failed', e);
+  }
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    mission_events — append-only lifecycle log
    ──────────────────────────────────────────────────────────────────── */

@@ -371,6 +371,9 @@ export interface LogbookEntry {
   completedMissionIds?: string[];
   rankTier: RankTierId;
   streakDay: number;
+  /** How this entry originated. 'mission' = created by a mission completion on a
+   *  day with no check-in yet; absent / 'checkin' = a real daily check-in. */
+  source?: 'checkin' | 'mission';
 }
 
 /* ──────────────────────────────────────────────────────────────────────

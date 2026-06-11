@@ -6,8 +6,12 @@ import { HomeScreen } from '@/src/screens/HomeScreen';
 import { useApp } from '@/src/store/AppContext';
 import type { UserState } from '@/src/design-system/types';
 
+// Log Win and Reflect both open the logbook (the reflection surface); Log Win
+// no longer duplicates Check-In. Check-In opens the daily flow, Compete opens
+// missions. A dedicated lightweight "win" logger can replace the Log Win target
+// later without touching the rest of the wiring.
 const QUICK_ACTION_ROUTES: Record<string, string> = {
-  'log-win':  '/(tabs)/checkin',
+  'log-win':  '/logbook',
   'checkin':  '/(tabs)/checkin',
   'compete':  '/(tabs)/missions',
   'reflect':  '/logbook',
@@ -42,6 +46,7 @@ export default function HomeRoute() {
       }}
       onStreakPress={() => router.push('/logbook')}
       onTrendPress={() => router.push('/(tabs)/stats')}
+      onBrowseMissions={() => router.push('/(tabs)/missions')}
     />
   );
 }

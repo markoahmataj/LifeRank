@@ -18,7 +18,7 @@ import { MissionCard } from '../components/MissionCard';
 import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 
 import {
-  categories, getTier, spacing, surface, fonts, alpha, state,
+  categories, getTier, spacing, surface, fonts, alpha, state, radius,
 } from '../design-system/tokens';
 import { mockBuild, mockQuickActions } from '../design-system/mockData';
 
@@ -73,6 +73,7 @@ export interface HomeScreenProps {
   onQuickAction?: (id: string) => void;
   onStreakPress?: () => void;
   onTrendPress?: () => void;
+  onBrowseMissions?: () => void;
 }
 
 export function HomeScreen({
@@ -86,6 +87,7 @@ export function HomeScreen({
   onQuickAction,
   onStreakPress,
   onTrendPress,
+  onBrowseMissions,
 }: HomeScreenProps) {
   const tier: RankTier = getTier(user.score.tier);
   const activeMission = user.activeMissions[0];
@@ -113,7 +115,7 @@ export function HomeScreen({
                 <Path d="M7 1.5C4.5 1.5 3 3.5 3 6v3l-1.5 2.5h11L11 9V6c0-2.5-1.5-4.5-4-4.5z" stroke="#fff" strokeWidth={1.4}/>
                 <Path d="M5.5 13a1.5 1.5 0 003 0" stroke="#fff" strokeWidth={1.4}/>
               </Svg>
-              <View style={[styles.notifPip, { backgroundColor: tier.primary }]}/>
+              {/* No notification system yet — no static pip implying unread signals. */}
             </Pressable>
 
             <Pressable onPress={onProfile} style={[styles.avatarRing, { backgroundColor: 'transparent' }]}>
@@ -137,7 +139,10 @@ export function HomeScreen({
           <View style={styles.scoreBlock}>
             <View style={styles.scoreCaptionRow}>
               <Text style={styles.scoreCaption}>LIFE SCORE</Text>
-              <DeltaPill value={`+${user.score.delta.toFixed(1)} THIS WEEK`} positive/>
+              <DeltaPill
+                value={`${user.score.delta >= 0 ? '+' : ''}${user.score.delta.toFixed(1)} THIS WEEK`}
+                positive={user.score.delta >= 0}
+              />
             </View>
 
             <View style={styles.scoreRow}>
@@ -203,7 +208,7 @@ export function HomeScreen({
         {/* ACTIVE MISSION */}
         <SectionHeader index="03" title="Today's Mission"/>
         <View style={styles.sectionBody}>
-          {activeMission && (
+          {activeMission ? (
             <MissionCard
               mission={activeMission}
               tier={tier}
@@ -211,6 +216,18 @@ export function HomeScreen({
               accentColor={tier.primary}
               onPress={() => onMissionPress?.(activeMission.id)}
             />
+          ) : (
+            <Pressable onPress={onBrowseMissions}>
+              <HudCard>
+                <Text style={styles.emptyMissionTitle}>No active operation</Text>
+                <Text style={styles.emptyMissionBody}>
+                  Accept an operation to start compounding score and RP.
+                </Text>
+                <View style={[styles.emptyMissionCta, { borderColor: alpha(tier.primary, 0.4) }]}>
+                  <Text style={[styles.emptyMissionCtaText, { color: tier.primary }]}>BROWSE OPERATIONS →</Text>
+                </View>
+              </HudCard>
+            </Pressable>
           )}
         </View>
 
@@ -394,7 +411,14 @@ const styles = StyleSheet.create({
     backgroundColor: surface.glassFill, borderWidth: 1, borderColor: surface.hairline,
     alignItems: 'center', justifyContent: 'center',
   },
-  notifPip: { position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: 3 },
+  emptyMissionTitle: { fontFamily: fonts.displayBold, fontSize: 15, fontWeight: '600', color: surface.textPrimary },
+  emptyMissionBody: { fontFamily: fonts.display, fontSize: 12.5, color: surface.textTertiary, marginTop: 6, lineHeight: 17 },
+  emptyMissionCta: {
+    alignSelf: 'flex-start', marginTop: 12,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: radius.pill, borderWidth: 1,
+  },
+  emptyMissionCtaText: { fontFamily: fonts.monoBold, fontSize: 10, fontWeight: '600', letterSpacing: 1 },
   avatarRing: {
     width: 36, height: 36, borderRadius: 12,
     padding: 1.5, overflow: 'hidden',

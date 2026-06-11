@@ -115,7 +115,11 @@ function buildCheckIn(
   payload: { rawRatings: Record<CategoryId, number>; tags?: string[]; note?: string },
 ): CheckInOutcome {
   const today = new Date().toISOString().slice(0, 10);
-  const isResubmit = state.logbook[0]?.date === today;
+  const todayEntry = state.logbook[0]?.date === today ? state.logbook[0] : undefined;
+  // A same-day re-submission edits today's CHECK-IN entry. A mission-only entry
+  // for today (a completion logged before any check-in) is replaced by this first
+  // real check-in, so streak/RP still apply normally rather than being skipped.
+  const isResubmit = !!todayEntry && todayEntry.source !== 'mission';
 
   // The state this check-in is applied against. On a same-day edit we use the
   // snapshot from *before* today's first check-in (the previous logbook entry)
@@ -150,9 +154,14 @@ function buildCheckIn(
     note: payload.note,
     rankTier: result.next.tier,
     streakDay: result.next.streak,
+    // Preserve any mission completions already recorded for today.
+    completedMissionIds: todayEntry?.completedMissionIds,
+    source: 'checkin',
   };
 
-  const nextLogbook = isResubmit
+  // Replace today's existing entry (a check-in re-submit or a mission-only entry);
+  // otherwise prepend a fresh one.
+  const nextLogbook = todayEntry
     ? [entry, ...state.logbook.slice(1)]
     : [entry, ...state.logbook];
 
@@ -233,6 +242,37 @@ function reducer(state: AppState, action: AppAction): AppState {
       const newDelta    = Math.round((newScore - prevScore) * 10) / 10;
       const newPbScore  = Math.max(state.score.pbScore ?? 0, newScore);
       const alreadyDone = state.completedMissions.some(m => m.id === action.payload.missionId);
+
+      // Record the completion in the day's progression history (logbook).
+      const today = new Date().toISOString().slice(0, 10);
+      const todayEntry = state.logbook[0]?.date === today ? state.logbook[0] : undefined;
+      let nextLogbook = state.logbook;
+      if (todayEntry) {
+        const ids = todayEntry.completedMissionIds ?? [];
+        if (!ids.includes(mission.id)) {
+          nextLogbook = [
+            { ...todayEntry, completedMissionIds: [...ids, mission.id] },
+            ...state.logbook.slice(1),
+          ];
+        }
+      } else {
+        // No check-in yet today — write a lightweight mission-only entry so the
+        // completion still appears in the logbook. The day's first check-in
+        // replaces it (carrying these ids forward) via buildCheckIn.
+        const synthetic: LogbookEntry = {
+          date: today,
+          lifeScore: newScore,
+          delta: 0,
+          categoryScores: state.categories,
+          tags: [],
+          rankTier: newTier,
+          streakDay: state.score.streak,
+          completedMissionIds: [mission.id],
+          source: 'mission',
+        };
+        nextLogbook = [synthetic, ...state.logbook];
+      }
+
       return {
         ...state,
         activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
@@ -248,6 +288,7 @@ function reducer(state: AppState, action: AppAction): AppState {
           pbScore:    newPbScore,
         },
         rp: state.rp + rewardRP,
+        logbook: nextLogbook,
       };
     }
 
@@ -527,7 +568,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeMission = useCallback((missionId: string) => {
+    const snapshot = stateRef.current;
     dispatch({ type: 'COMPLETE_MISSION', payload: { missionId } });
+    // If today's check-in row already exists, mirror the completion onto it so it
+    // survives a remote reload. (The reducer covers local state + the no-check-in
+    // case; that synthetic entry reconciles into the cloud on the next check-in.)
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEntry = snapshot.logbook[0]?.date === today ? snapshot.logbook[0] : undefined;
+    if (todayEntry && todayEntry.source !== 'mission') {
+      const ids = todayEntry.completedMissionIds ?? [];
+      if (!ids.includes(missionId)) {
+        Sync.updateCheckinCompletedMissions(today, [...ids, missionId]);
+      }
+    }
   }, []);
 
   const toggleMissionTask = useCallback((missionId: string, taskId: string) => {

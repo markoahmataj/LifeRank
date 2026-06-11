@@ -45,7 +45,20 @@
       "Bash(echo \"DOCTOR_EXIT=$?\")",
       "Bash(echo \"EXPORT_EXIT=$?\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Claude\\\\LifeRank\" -Recurse -Directory)",
-      "Bash(Select-Object -First 30)"
+      "Bash(Select-Object -First 30)",
+      "Skill(fewer-permission-prompts)",
+      "Skill(fewer-permission-prompts:*)",
+      "Bash(cd \"c:\\Claude\\LifeRank\" && npx tsc *)",
+      "Bash(cd \"c:\\Claude\\LifeRank\" && npx expo-doctor *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(cd C:\\Claude\\LifeRank; npx tsc *)",
+      "PowerShell(cd \"c:\\Claude\\LifeRank\"; npx tsc *)",
+      "Bash(cat \"C:\\\\Users\\\\marko\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Claude-LifeRank\\\\7e0d9020-4e54-462a-8d05-54a7fc8c4e17\\\\tasks\\\\bg9n1w73n.output\")",
+      "Bash(jobs)",
+      "Bash(echo \"===tsc exit: $?===\")"
     ],
     "additionalDirectories": [
       "c:\\Claude\\LifeRank\\app\\check-in"

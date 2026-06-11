@@ -23,6 +23,10 @@ export interface CheckInScreenProps {
   tier: RankTier;
   stepIndex?: number;
   streak?: number;
+  /** Seed value when revisiting a category (defaults to a clean 5). */
+  initialScore?: number;
+  /** Seed tags when revisiting a category (defaults to none). */
+  initialTags?: CheckInTagId[];
   onNext?: (answer: CheckInAnswer) => void;
   onBack?: () => void;
   onCancel?: () => void;
@@ -32,6 +36,8 @@ export function CheckInScreen({
   tier,
   stepIndex = 0,
   streak = 0,
+  initialScore,
+  initialTags,
   onNext,
   onBack,
   onCancel,
@@ -39,8 +45,11 @@ export function CheckInScreen({
   const categoryId: CategoryId = CATEGORY_ORDER[stepIndex];
   const category = categories[categoryId];
 
-  const [score, setScore] = useState<number>(5);
-  const [selectedTags, setSelectedTags] = useState<CheckInTagId[]>([]);
+  // The parent remounts this screen per step (key={stepIndex}), so these
+  // initializers run fresh for each category — clean by default, or restored
+  // from a saved answer when the user steps back.
+  const [score, setScore] = useState<number>(initialScore ?? 5);
+  const [selectedTags, setSelectedTags] = useState<CheckInTagId[]>(initialTags ?? []);
 
   const segment = useMemo(() => segmentForScore(score), [score]);
 
@@ -172,10 +181,10 @@ export function CheckInScreen({
           })}
         </View>
 
-        {/* VOICE MEMO */}
+        {/* VOICE MEMO — not implemented yet; shown as a clearly disabled affordance */}
         <View style={{ paddingHorizontal: spacing.xl, marginTop: 16 }}>
           <HudCard>
-            <View style={styles.voiceRow}>
+            <View style={[styles.voiceRow, { opacity: 0.55 }]}>
               <View style={[styles.voiceIcon, { backgroundColor: alpha(tier.primary, 0.18), borderColor: alpha(tier.primary, 0.33) }]}>
                 <Svg width={14} height={18} viewBox="0 0 14 18"><Path d="M7 1v10" stroke={tier.primary} strokeWidth={4} strokeLinecap="round"/><Path d="M1 9c0 3.3 2.7 6 6 6s6-2.7 6-6M7 15v2" stroke={tier.primary} strokeWidth={1.6} strokeLinecap="round"/></Svg>
               </View>
@@ -183,7 +192,9 @@ export function CheckInScreen({
                 <Text style={styles.voiceTitle}>Add voice memo</Text>
                 <Text style={styles.voiceSub}>20s reflection · auto-transcribed</Text>
               </View>
-              <Svg width={6} height={10} viewBox="0 0 6 10"><Path d="M1 1l4 4-4 4" stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} strokeLinecap="round" fill="none"/></Svg>
+              <View style={styles.soonBadge}>
+                <Text style={styles.soonText}>SOON</Text>
+              </View>
             </View>
           </HudCard>
         </View>
@@ -299,6 +310,12 @@ const styles = StyleSheet.create({
   },
   voiceTitle: { fontFamily: fonts.displayBold, fontSize: 13, fontWeight: '600', color: '#fff' },
   voiceSub:   { fontFamily: fonts.display, fontSize: 11, color: surface.textTertiary, marginTop: 2 },
+  soonBadge:  {
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: radius.pill, borderWidth: 1, borderColor: surface.hairline,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  soonText:   { fontFamily: fonts.mono, fontSize: 9, color: surface.textTertiary, letterSpacing: 1 },
 
   ctaBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
