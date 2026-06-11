@@ -70,12 +70,12 @@ export function ProfileScreen({
   const canEdit = !!onSaveProfile;
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(displayName);
-  const [handleInput, setHandleInput] = useState(handle.replace(/^@+/, ''));
+  const [handleInput, setHandleInput] = useState(handle.replace(/^@+/, '').toLowerCase());
   const [error, setError] = useState<string | null>(null);
 
   const beginEdit = () => {
     setNameInput(displayName);
-    setHandleInput(handle.replace(/^@+/, ''));
+    setHandleInput(handle.replace(/^@+/, '').toLowerCase());
     setError(null);
     setEditing(true);
   };
@@ -87,7 +87,7 @@ export function ProfileScreen({
 
   const saveEdit = () => {
     const name = nameInput.trim();
-    const cleanHandle = handleInput.trim().replace(/^@+/, '');
+    const cleanHandle = handleInput.trim().replace(/^@+/, '').toLowerCase();
 
     if (name.length < 1 || name.length > 30) {
       setError('Display name must be 1–30 characters.');
@@ -97,12 +97,12 @@ export function ProfileScreen({
       setError('Handle cannot contain spaces.');
       return;
     }
-    if (cleanHandle.length < 2 || cleanHandle.length > 20) {
-      setError('Handle must be 2–20 characters.');
+    if (cleanHandle.length < 6 || cleanHandle.length > 20) {
+      setError('Handle must be 6–20 characters.');
       return;
     }
-    if (!/^[a-zA-Z0-9._]+$/.test(cleanHandle)) {
-      setError('Handle: letters, numbers, dots, underscores only.');
+    if (!/^[a-z0-9._]+$/.test(cleanHandle)) {
+      setError('Handle: lowercase letters, numbers, dots, underscores only.');
       return;
     }
 
@@ -249,7 +249,7 @@ export function ProfileScreen({
                       <Text style={styles.handlePrefix}>@</Text>
                       <TextInput
                         value={handleInput}
-                        onChangeText={t => setHandleInput(t.replace(/^@+/, ''))}
+                        onChangeText={t => setHandleInput(t.replace(/^@+/, '').toLowerCase())}
                         placeholder="handle"
                         placeholderTextColor={surface.textMuted}
                         style={[styles.input, { flex: 1, marginTop: 0 }]}

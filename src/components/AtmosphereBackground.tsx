@@ -70,12 +70,6 @@ export function AtmosphereBackground({
         )}
       </Svg>
 
-      {/* Top vignette */}
-      <LinearGradient
-        colors={[surface.bg, 'transparent']}
-        style={[StyleSheet.absoluteFill, { height: 120, bottom: undefined }]}
-        pointerEvents="none"
-      />
       {/* Bottom vignette */}
       <LinearGradient
         colors={['transparent', surface.bg]}

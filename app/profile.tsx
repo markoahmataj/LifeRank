@@ -1,7 +1,7 @@
 // app/profile.tsx
 // Rank identity / profile screen.
 
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ProfileScreen } from '@/src/screens/ProfileScreen';
 import { useApp } from '@/src/store/AppContext';
@@ -15,12 +15,21 @@ export default function ProfileRoute() {
   // Strongest pillar by current value drives the "favorite" category display.
   const fav = [...state.categories].sort((a, b) => b.value - a.value)[0]?.id;
 
-  // Same pattern as Settings: confirm, then signOut() — the auth listener clears
-  // local cache + RESET, and the route guard redirects to /auth automatically.
+  // Confirm, then signOut() — the auth listener clears local cache + RESET and the
+  // route guard redirects to /auth automatically.
   const handleSignOut = () => {
+    const message = 'You will return to the sign-in screen. Your data is preserved in the cloud and restored on next sign-in.';
+    if (Platform.OS === 'web') {
+      // React Native Web's Alert.alert ignores button callbacks — use the
+      // browser confirm dialog so sign-out actually fires.
+      if (typeof window === 'undefined' || window.confirm(`Sign out?\n\n${message}`)) {
+        signOut();
+      }
+      return;
+    }
     Alert.alert(
       'Sign out?',
-      'You will return to the sign-in screen. Your data is preserved in the cloud and restored on next sign-in.',
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign out', style: 'destructive', onPress: () => { signOut(); } },
