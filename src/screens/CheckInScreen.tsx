@@ -15,7 +15,7 @@ import { CategoryGlyphIcon } from '../components/CategoryGlyph';
 
 import {
   categories, CATEGORY_ORDER, getTier, segmentForScore,
-  surface, spacing, fonts, alpha, radius,
+  surface, spacing, fonts, alpha, radius, layout,
 } from '../design-system/tokens';
 import { mockCheckInTags, CHECKIN_PROMPTS } from '../design-system/mockData';
 
@@ -60,7 +60,7 @@ export function CheckInScreen({
     <View style={styles.root}>
       <AtmosphereBackground tier={tier}/>
 
-      <ScrollView style={StyleSheet.absoluteFill} contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={StyleSheet.absoluteFill} contentContainerStyle={{ paddingBottom: 220 }} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.headerRow}>
           <Pressable onPress={onBack} style={styles.iconBtn}>
@@ -319,6 +319,10 @@ const styles = StyleSheet.create({
 
   ctaBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: 40,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    // Lift the button clear of the floating tab bar (bottom 28 + height 64) so it
+    // is never hidden behind it, on web and mobile alike.
+    paddingBottom: layout.tabBarBottom + layout.tabBarHeight + spacing.md,
   },
 });
