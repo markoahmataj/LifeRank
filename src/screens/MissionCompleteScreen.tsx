@@ -89,7 +89,7 @@ export function MissionCompleteScreen({
           <HudCard accentColor={tier.primary} showTopEdge>
             <Text style={[styles.cap, { textAlign: 'center', marginBottom: 12 }]}>REWARDS</Text>
             <View style={styles.rewardGrid}>
-              <RewardTile label="SCORE GAINED" value={`+${result.rewardScore.toFixed(1)}`} color={tier.primary}/>
+              <RewardTile label={`${cat.name.toUpperCase()} +`} value={`+${result.rewardScore.toFixed(1)}`} color={cat.accent}/>
               <RewardTile label="RP EARNED"    value={`+${result.rewardRP}`}                color={tier.accent}/>
             </View>
           </HudCard>

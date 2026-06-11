@@ -46,6 +46,8 @@ export function MissionsScreen({
     active[0]
     ?? available.find(m => m.status === 'featured')
     ?? available[0];
+  const featuredRequiredDays  = featured?.requiredDays ?? featured?.duration ?? null;
+  const featuredDaysCompleted = featured?.daysCompleted ?? 0;
   const list = useMemo<Mission[]>(() => {
     if (filter === 'active')    return active;
     if (filter === 'available') return available;
@@ -97,11 +99,13 @@ export function MissionsScreen({
               <View style={styles.metaLeft}>
                 <EqIcon color={tier.primary}/>
                 <Text style={[styles.opStatusLabel, { color: tier.primary }]}>
-                  {featured.status === 'active' ? `ACTIVE · DAY ${featured.daysIn}/${featured.duration}` : 'FEATURED'}
+                  {featured.status === 'active'
+                    ? `ACTIVE · DAY ${featuredDaysCompleted}/${featuredRequiredDays ?? '—'}`
+                    : 'FEATURED'}
                 </Text>
               </View>
               <View style={[styles.reward, { backgroundColor: alpha(tier.primary, 0.14), borderColor: alpha(tier.primary, 0.33) }]}>
-                <Text style={[styles.rewardText, { color: tier.primary }]}>+{featured.rewardScore} SCORE</Text>
+                <Text style={[styles.rewardText, { color: tier.primary }]}>+{featured.rewardScore.toFixed(1)} {categories[featured.category].short}</Text>
               </View>
             </View>
 
@@ -111,13 +115,11 @@ export function MissionsScreen({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
               <Difficulty color={tier.primary} level={featured.difficulty}/>
               <Text style={styles.heroMeta}>·</Text>
-              <Text style={styles.heroMeta}>
-                {featured.tasks
-                  ? `${featured.tasks.filter(t => t.done).length}/${featured.tasks.length} TASKS`
-                  : `${featured.duration ?? '—'}D PROTOCOL`}
-              </Text>
+              <Text style={styles.heroMeta}>{featuredRequiredDays ?? '—'}D PROTOCOL</Text>
               <Text style={styles.heroMeta}>·</Text>
-              <Text style={styles.heroMeta}>{featured.daysIn ? `DAY ${featured.daysIn}/${featured.duration}` : 'READY'}</Text>
+              <Text style={styles.heroMeta}>
+                {featured.status === 'active' ? `DAY ${featuredDaysCompleted}/${featuredRequiredDays ?? '—'}` : 'READY'}
+              </Text>
             </View>
 
             <View style={{ marginTop: 14 }}>

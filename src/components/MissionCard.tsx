@@ -32,6 +32,9 @@ export function MissionCard({
 }: MissionCardProps) {
   const cat = categories[mission.category];
   const isLocked = mission.status === 'locked';
+  const isActive = mission.status === 'active';
+  const requiredDays  = mission.requiredDays ?? mission.duration;
+  const daysCompleted = mission.daysCompleted ?? 0;
 
   return (
     <Pressable onPress={onPress}>
@@ -52,7 +55,7 @@ export function MissionCard({
             </View>
             <StatusTag status={mission.status} accentColor={accentColor}/>
           </View>
-          <RewardStamp reward={mission.rewardScore} accentColor={accentColor}/>
+          <RewardStamp reward={mission.rewardScore} unit={cat.short} accentColor={accentColor}/>
         </View>
 
         {/* Title */}
@@ -69,8 +72,8 @@ export function MissionCard({
         {/* Meta row */}
         <View style={styles.metaRow}>
           <DifficultyPips level={mission.difficulty} color={accentColor}/>
-          {mission.daysIn != null && mission.duration != null && (
-            <Text style={styles.metaText}>DAY {mission.daysIn}/{mission.duration}</Text>
+          {isActive && requiredDays != null && (
+            <Text style={styles.metaText}>DAY {daysCompleted}/{requiredDays}</Text>
           )}
           {isLocked && (
             <LockIcon color={surface.textMuted}/>
@@ -132,10 +135,10 @@ function DifficultyPips({ level, color }: { level: number; color: string }) {
   );
 }
 
-function RewardStamp({ reward, accentColor }: { reward: number; accentColor: string }) {
+function RewardStamp({ reward, unit, accentColor }: { reward: number; unit: string; accentColor: string }) {
   return (
     <View style={[styles.reward, { backgroundColor: alpha(accentColor, 0.14), borderColor: alpha(accentColor, 0.33) }]}>
-      <Text style={[styles.rewardText, { color: accentColor }]}>+{reward.toFixed(1)} SCORE</Text>
+      <Text style={[styles.rewardText, { color: accentColor }]}>+{reward.toFixed(1)} {unit}</Text>
     </View>
   );
 }

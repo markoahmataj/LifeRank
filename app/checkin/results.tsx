@@ -27,6 +27,11 @@ export default function CheckInResultsRoute() {
   const low  = [...state.categories].sort((a, b) => a.value - b.value)[0];
   const gap  = +(high.value - low.value).toFixed(1);
 
+  const nextMission =
+    mockAvailableMissions.find(m => m.category === weakest.id && m.status !== 'locked')
+    ?? mockAvailableMissions.find(m => m.status === 'featured')
+    ?? mockAvailableMissions[0];
+
   const diagnosis: Diagnosis = {
     strongest: { category: strongest.id, delta: strongest.delta },
     weakest:   { category: weakest.id,   delta: weakest.delta   },
@@ -34,13 +39,8 @@ export default function CheckInResultsRoute() {
     narrative:
       `${categories[strongest.id].name} moved fastest (${strongest.delta >= 0 ? '+' : ''}${strongest.delta.toFixed(1)}). ` +
       `${categories[weakest.id].name} needs attention (${weakest.delta >= 0 ? '+' : ''}${weakest.delta.toFixed(1)}).`,
-    nextMissionId: 'OP-301',
+    nextMissionId: nextMission?.id,
   };
-
-  const nextMission =
-    mockAvailableMissions.find(m => m.category === weakest.id && m.status !== 'locked')
-    ?? mockAvailableMissions.find(m => m.status === 'featured')
-    ?? mockAvailableMissions[0];
 
   return (
     <ResultsScreen

@@ -12,11 +12,18 @@ export default function MissionsRoute() {
   const { state } = useApp();
   const tier = getTier(state.score.tier);
 
+  // Don't show a mission that's already active or completed as fresh "available".
+  const takenIds = new Set([
+    ...state.activeMissions.map(m => m.id),
+    ...state.completedMissions.map(m => m.id),
+  ]);
+  const available = mockAvailableMissions.filter(m => !takenIds.has(m.id));
+
   return (
     <MissionsScreen
       tier={tier}
       activeMissions={state.activeMissions}
-      availableMissions={mockAvailableMissions}
+      availableMissions={available}
       completedMissions={state.completedMissions}
       onMissionPress={(id) => router.push(`/mission/${id}`)}
     />

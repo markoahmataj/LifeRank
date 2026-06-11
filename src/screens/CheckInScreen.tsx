@@ -27,6 +27,9 @@ export interface CheckInScreenProps {
   initialScore?: number;
   /** Seed tags when revisiting a category (defaults to none). */
   initialTags?: CheckInTagId[];
+  /** When false, the last category's button says "Continue" because a mission
+   *  progress step follows. Defaults to true (last category submits the flow). */
+  isFinalStep?: boolean;
   onNext?: (answer: CheckInAnswer) => void;
   onBack?: () => void;
   onCancel?: () => void;
@@ -38,6 +41,7 @@ export function CheckInScreen({
   streak = 0,
   initialScore,
   initialTags,
+  isFinalStep = true,
   onNext,
   onBack,
   onCancel,
@@ -208,7 +212,7 @@ export function CheckInScreen({
         />
         <PrimaryCTA
           tier={tier}
-          label={stepIndex === CATEGORY_ORDER.length - 1 ? 'Submit Check-in' : 'Continue'}
+          label={stepIndex === CATEGORY_ORDER.length - 1 ? (isFinalStep ? 'Submit Check-in' : 'Continue') : 'Continue'}
           onPress={() => onNext?.({ category: categoryId, score, tags: selectedTags })}
           icon={
             <Svg width={14} height={12} viewBox="0 0 14 12"><Path d="M1 6h11M8 1l4 5-4 5" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none"/></Svg>

@@ -20,6 +20,10 @@ import {
 export interface LogbookScreenProps {
   tier?: RankTier;
   entries?: LogbookEntry[];
+  /** mission id → title, for rendering progress/completion lines by name. */
+  missionTitles?: Record<string, string>;
+  /** date (YYYY-MM-DD) → missions that advanced that day (from completedDates). */
+  advancedByDate?: Record<string, { id: string; title: string }[]>;
   onBack?: () => void;
   onSelectDay?: (date: string) => void;
 }
@@ -27,6 +31,8 @@ export interface LogbookScreenProps {
 export function LogbookScreen({
   tier = getTier('apex'),
   entries = [],
+  missionTitles = {},
+  advancedByDate = {},
   onBack,
   onSelectDay,
 }: LogbookScreenProps) {
@@ -103,6 +109,8 @@ export function LogbookScreen({
                     expanded={expanded}
                     onPress={() => setExpandedDate(expanded ? null : entry.date)}
                     tier={tier}
+                    missionTitles={missionTitles}
+                    advanced={advancedByDate[entry.date] ?? []}
                   />
                 );
               })}
@@ -115,10 +123,14 @@ export function LogbookScreen({
 }
 
 function LogbookEntryCard({
-  entry, expanded, onPress, tier,
+  entry, expanded, onPress, tier, missionTitles, advanced,
 }: {
   entry: LogbookEntry; expanded: boolean; onPress: () => void; tier: RankTier;
+  missionTitles: Record<string, string>; advanced: { id: string; title: string }[];
 }) {
+  const completedIds = entry.completedMissionIds ?? [];
+  // Operations that advanced that day but did NOT complete on the same day.
+  const advancedOnly = advanced.filter(a => !completedIds.includes(a.id));
   const date = new Date(entry.date);
   const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' });
   const deltaTone = entry.delta > 0 ? state.win : entry.delta < 0 ? state.break : surface.textSecondary;
@@ -178,11 +190,20 @@ function LogbookEntryCard({
               </View>
             )}
 
-            {entry.completedMissionIds && entry.completedMissionIds.length > 0 && (
+            {advancedOnly.length > 0 && (
               <View style={styles.missionRow}>
-                <Text style={styles.smallCap}>COMPLETED OPERATIONS</Text>
-                {entry.completedMissionIds.map(id => (
-                  <Text key={id} style={styles.missionItem}>· {id}</Text>
+                <Text style={styles.smallCap}>OPERATIONS ADVANCED</Text>
+                {advancedOnly.map(a => (
+                  <Text key={a.id} style={styles.missionItem}>· {a.title}</Text>
+                ))}
+              </View>
+            )}
+
+            {completedIds.length > 0 && (
+              <View style={styles.missionRow}>
+                <Text style={[styles.smallCap, { color: state.win }]}>OPERATIONS COMPLETED</Text>
+                {completedIds.map(id => (
+                  <Text key={id} style={[styles.missionItem, { color: '#fff' }]}>· {missionTitles[id] ?? id}</Text>
                 ))}
               </View>
             )}

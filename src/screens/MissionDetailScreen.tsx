@@ -50,11 +50,16 @@ export function MissionDetailScreen({
   const isActive    = mission.status === 'active';
   const isLocked    = mission.status === 'locked';
   const isCompleted = mission.status === 'completed';
-  const hasTasks    = (mission.tasks?.length ?? 0) > 0;
-  // Task-based missions complete when every task is done (progress 100).
-  // Taskless missions — the current catalog — can be marked complete manually
-  // once accepted, so Compete is no longer a dead branch.
-  const isReadyToComplete = isActive && (!hasTasks || (mission.progress ?? 0) >= 100);
+
+  // Missions are protocols. requiredDays come from the mission (or its duration);
+  // a value of 1 means a single-day mission that can finish immediately.
+  const requiredDays  = mission.requiredDays ?? mission.duration ?? 1;
+  const daysCompleted = mission.daysCompleted ?? 0;
+  const isSingleDay   = requiredDays <= 1;
+  // A multi-day mission can ONLY complete once daysCompleted reaches requiredDays.
+  // Progress is logged through the daily check-in — never instantly here.
+  const isReadyToComplete = isActive && (isSingleDay || daysCompleted >= requiredDays);
+  const daysLeft = Math.max(0, requiredDays - daysCompleted);
 
   return (
     <View style={styles.root}>
@@ -106,11 +111,14 @@ export function MissionDetailScreen({
 
             <View style={styles.statsGrid}>
               <Stat label="DIFFICULTY" value={'■'.repeat(mission.difficulty) + '□'.repeat(5 - mission.difficulty)}/>
-              <Stat label="SCORE"      value={`+${mission.rewardScore.toFixed(1)}`}/>
+              <Stat label={`${cat.name.toUpperCase()} REWARD`} value={`+${mission.rewardScore.toFixed(1)}`}/>
               <Stat label="RP"         value={`+${mission.rewardRP ?? Math.round(mission.rewardScore * 250)}`}/>
-              <Stat label="DURATION"   value={`${mission.duration ?? '—'}D`}/>
-              {isActive && (
-                <Stat label="DAYS LEFT" value={`${(mission.duration ?? 0) - (mission.daysIn ?? 0)}D`}/>
+              <Stat label="PROTOCOL"   value={`${requiredDays}D`}/>
+              {isActive && !isSingleDay && (
+                <Stat label="PROGRESS"  value={`${daysCompleted} / ${requiredDays}`}/>
+              )}
+              {isActive && !isSingleDay && (
+                <Stat label="DAYS LEFT" value={`${daysLeft}D`}/>
               )}
             </View>
           </HudCard>

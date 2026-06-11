@@ -95,6 +95,7 @@ export const mockAvailableMissions: Mission[] = [
     category: 'discipline',
     reason: 'You handle high stress — push the ceiling.',
     status: 'featured',
+    duration: 30,
   },
   {
     id: 'OP-072',
@@ -105,6 +106,7 @@ export const mockAvailableMissions: Mission[] = [
     rewardRP: 320,
     category: 'discipline',
     status: 'available',
+    duration: 21,
   },
   {
     id: 'OP-046',
@@ -115,6 +117,7 @@ export const mockAvailableMissions: Mission[] = [
     rewardRP: 100,
     category: 'career',
     status: 'available',
+    duration: 7,
   },
   {
     id: 'OP-512',
@@ -126,6 +129,7 @@ export const mockAvailableMissions: Mission[] = [
     category: 'discipline',
     status: 'locked',
     requiredTier: 'zenith',
+    duration: 90,
   },
 ];
 
@@ -263,10 +267,9 @@ export const mockVitals: Array<{ label: string; value: string; dot: string }> = 
    QUICK ACTIONS
    ──────────────────────────────────────────────────────────────────── */
 export const mockQuickActions = [
-  { id: 'log-win',  label: 'Log Win',  color: '#FF2D5C' },
   { id: 'checkin',  label: 'Check-In', color: '#22D3EE' },
-  { id: 'compete',  label: 'Compete',  color: '#C026D3' },
-  { id: 'reflect',  label: 'Reflect',  color: '#7C3AED' },
+  { id: 'compete',  label: 'Missions', color: '#C026D3' },
+  { id: 'reflect',  label: 'Logbook',  color: '#7C3AED' },
 ] as const;
 
 /* ──────────────────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ import type {
   UserSettings,
 } from '../design-system/types';
 import { DEFAULT_USER_SETTINGS } from '../design-system/types';
-import { applyCheckIn, tierForScore, nextPromotionScore, rpForMissionComplete, type ApplyCheckInResult } from '../design-system/scoringModel';
+import { applyCheckIn, tierForScore, nextPromotionScore, rpForMissionComplete, deriveLifeScoreFromCategories, reconcileScore, requiredDaysForMission, isMissionComplete, applyMissionRewardToCategories, advanceMissionDay, type ApplyCheckInResult } from '../design-system/scoringModel';
 import * as Storage from '../storage/appStorage';
 import { supabase } from '../lib/supabase';
 import * as Sync from '../services/liferankSync';
@@ -81,7 +81,7 @@ const initialState: AppState = {
 export type AppAction =
   | { type: 'HYDRATE'; payload: Partial<AppState> }
   | { type: 'CALIBRATE'; payload: { score: LifeScore; categories: CategoryScore[]; build: UserBuild; handle: string; displayName: string } }
-  | { type: 'SUBMIT_CHECKIN'; payload: { rawRatings: Record<CategoryId, number>; tags?: string[]; note?: string } }
+  | { type: 'SUBMIT_CHECKIN'; payload: { rawRatings: Record<CategoryId, number>; tags?: string[]; note?: string; missionDaily?: Record<string, boolean> } }
   | { type: 'ACCEPT_MISSION'; payload: Mission }
   | { type: 'ABANDON_MISSION'; payload: { missionId: string } }
   | { type: 'COMPLETE_MISSION'; payload: { missionId: string } }
@@ -100,6 +100,7 @@ export type AppAction =
    new one, and does not re-increment the streak or re-award RP.
    ──────────────────────────────────────────────────────────────────── */
 interface CheckInOutcome {
+  /** next / nextCategoryScores / rpEarned all reflect FINAL post-mission values. */
   result: ApplyCheckInResult;
   entry: LogbookEntry;
   rpEarned: number;
@@ -108,11 +109,62 @@ interface CheckInOutcome {
   prevTier: RankTierId;
   nextLogbook: LogbookEntry[];
   nextRp: number;
+  nextActiveMissions: Mission[];
+  nextCompletedMissions: Mission[];
+  /** Missions that finished during THIS submission (for mission_events + UI). */
+  newlyCompletedMissions: Mission[];
+}
+
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+
+/**
+ * Advance active-mission progress for a single day's check-in.
+ *
+ * - A mission marked done today advances by one day (idempotent per date via
+ *   completedDates) and completes when it reaches requiredDays.
+ * - `newlyCompleted` finished during THIS submit; their reward is not yet in the
+ *   categories, so it is always applied.
+ * - `alreadyToday` finished earlier today (e.g. a manual completion). Whether to
+ *   re-apply their reward depends on the baseline the caller is recomputing from
+ *   (see buildCheckIn), so they are returned separately.
+ */
+function processCheckInMissions(
+  active: Mission[],
+  completed: Mission[],
+  missionDaily: Record<string, boolean> | undefined,
+  today: string,
+): {
+  nextActive: Mission[];
+  nextCompleted: Mission[];
+  alreadyToday: Mission[];
+  newlyCompleted: Mission[];
+} {
+  const newlyCompleted: Mission[] = [];
+  const nextActive: Mission[] = [];
+
+  for (const m of active) {
+    const doneToday = missionDaily?.[m.id] === true;
+    const advanced = doneToday ? advanceMissionDay(m, today) : m;
+    if (doneToday && isMissionComplete(advanced)) {
+      newlyCompleted.push({ ...advanced, status: 'completed' as const });
+    } else {
+      nextActive.push(advanced);
+    }
+  }
+
+  const alreadyToday = completed.filter(m => (m.completedDates ?? []).includes(today));
+
+  const nextCompleted = [
+    ...completed,
+    ...newlyCompleted.filter(nc => !completed.some(c => c.id === nc.id)),
+  ];
+
+  return { nextActive, nextCompleted, alreadyToday, newlyCompleted };
 }
 
 function buildCheckIn(
   state: AppState,
-  payload: { rawRatings: Record<CategoryId, number>; tags?: string[]; note?: string },
+  payload: { rawRatings: Record<CategoryId, number>; tags?: string[]; note?: string; missionDaily?: Record<string, boolean> },
 ): CheckInOutcome {
   const today = new Date().toISOString().slice(0, 10);
   const todayEntry = state.logbook[0]?.date === today ? state.logbook[0] : undefined;
@@ -136,26 +188,74 @@ function buildCheckIn(
     ? { ...state.score, value: prevScore, streak: Math.max(0, state.score.streak - 1) }
     : state.score;
 
-  const result = applyCheckIn({
+  // 1. Category EMA + streak from the raw ratings (life score recomputed below).
+  const ema = applyCheckIn({
     current: baselineScore,
     rawRatings: payload.rawRatings,
     previousCategoryScores: baselineCategories,
     activeMissions: state.activeMissions,
   });
 
-  const rpEarned = isResubmit ? 0 : result.rpEarned;
+  // 2. Advance active-mission progress for today and collect category rewards.
+  const { nextActive, nextCompleted, alreadyToday, newlyCompleted } =
+    processCheckInMissions(state.activeMissions, state.completedMissions, payload.missionDaily, today);
+
+  // Which mission rewards to apply to the EMA categories:
+  //  - First check-in of the day: the baseline is `state.categories`, which already
+  //    contains any reward applied earlier today (e.g. a manual completion). Only
+  //    apply rewards for missions completing right now.
+  //  - Re-submission: the baseline is the PRIOR day's snapshot (pre-today), so all
+  //    of today's mission rewards must be re-applied or they would be dropped.
+  const rewardMissions = isResubmit
+    ? [...newlyCompleted, ...alreadyToday]
+    : [...newlyCompleted];
+
+  // 3. Apply mission rewards on top of the EMA categories, then re-derive score.
+  const finalCategories = rewardMissions.reduce(
+    (cats, m) => applyMissionRewardToCategories(cats, m),
+    ema.nextCategoryScores,
+  );
+  const lifeValue = deriveLifeScoreFromCategories(finalCategories, { streakDays: ema.next.streak });
+  const finalTier = tierForScore(lifeValue);
+  const finalScore: LifeScore = {
+    ...ema.next,
+    value: lifeValue,
+    delta: round1(lifeValue - prevScore),
+    tier: finalTier,
+    nextRankAt: nextPromotionScore(finalTier),
+    pbScore: Math.max(ema.next.pbScore ?? 0, lifeValue),
+  };
+
+  // 4. RP: check-in RP only on the first submission of the day; mission-completion
+  //    RP whenever a mission newly completes (idempotent — completed missions leave
+  //    the active list and can't re-complete).
+  const checkinRP = isResubmit ? 0 : ema.rpEarned;
+  const missionRP = newlyCompleted.reduce((sum, m) => sum + rpForMissionComplete(m), 0);
+  const rpEarned = checkinRP + missionRP;
+
+  const result: ApplyCheckInResult = {
+    next: finalScore,
+    nextCategoryScores: finalCategories,
+    rpEarned,
+  };
+
+  // Merge mission-completion ids onto the day's entry (preserve any already there).
+  const completedIds = Array.from(new Set([
+    ...(todayEntry?.completedMissionIds ?? []),
+    ...newlyCompleted.map(m => m.id),
+  ]));
 
   const entry: LogbookEntry = {
     date: today,
-    lifeScore: result.next.value,
-    delta: result.next.delta,
-    categoryScores: result.nextCategoryScores,
+    lifeScore: finalScore.value,
+    delta: finalScore.delta,
+    categoryScores: finalCategories,
     tags: payload.tags ?? [],
     note: payload.note,
-    rankTier: result.next.tier,
-    streakDay: result.next.streak,
-    // Preserve any mission completions already recorded for today.
-    completedMissionIds: todayEntry?.completedMissionIds,
+    rankTier: finalScore.tier,
+    streakDay: finalScore.streak,
+    completedMissionIds: completedIds.length ? completedIds : undefined,
+    missionDaily: payload.missionDaily,
     source: 'checkin',
   };
 
@@ -174,6 +274,9 @@ function buildCheckIn(
     prevTier,
     nextLogbook,
     nextRp: state.rp + rpEarned,
+    nextActiveMissions: nextActive,
+    nextCompletedMissions: nextCompleted,
+    newlyCompletedMissions: newlyCompleted,
   };
 }
 
@@ -182,8 +285,16 @@ function buildCheckIn(
    ──────────────────────────────────────────────────────────────────── */
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'HYDRATE':
-      return { ...state, ...action.payload, isHydrated: true };
+    case 'HYDRATE': {
+      const merged: AppState = { ...state, ...action.payload, isHydrated: true };
+      // Life Score is derived from categories. Reconcile on load so any user
+      // whose stored score was inflated by the old mission bug self-heals; the
+      // write-through effect then persists the corrected score/tier.
+      if (merged.categories && merged.categories.length) {
+        merged.score = reconcileScore(merged.score, merged.categories);
+      }
+      return merged;
+    }
 
     case 'CALIBRATE': {
       const { score, categories, build, handle, displayName } = action.payload;
@@ -200,11 +311,13 @@ function reducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'SUBMIT_CHECKIN': {
-      const { result, nextLogbook, nextRp } = buildCheckIn(state, action.payload);
+      const { result, nextLogbook, nextRp, nextActiveMissions, nextCompletedMissions } = buildCheckIn(state, action.payload);
       return {
         ...state,
         score: result.next,
         categories: result.nextCategoryScores,
+        activeMissions: nextActiveMissions,
+        completedMissions: nextCompletedMissions,
         rp: nextRp,
         logbook: nextLogbook,
       };
@@ -213,9 +326,19 @@ function reducer(state: AppState, action: AppAction): AppState {
     case 'ACCEPT_MISSION':
       return {
         ...state,
+        // Accepting STARTS a protocol; it does not touch Life Score and cannot be
+        // completed until requiredDays of progress are logged.
         activeMissions: [
           ...state.activeMissions,
-          { ...action.payload, status: 'active', daysIn: 0, progress: 0 },
+          {
+            ...action.payload,
+            status: 'active',
+            daysIn: 0,
+            daysCompleted: 0,
+            progress: 0,
+            requiredDays: requiredDaysForMission(action.payload),
+            completedDates: [],
+          },
         ],
       };
 
@@ -233,11 +356,18 @@ function reducer(state: AppState, action: AppAction): AppState {
           activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
         };
       }
+      // Gate: a multi-day protocol can only finish once requiredDays are met.
+      // Defensive — the Mission Detail CTA already enforces this. No-op otherwise.
+      if (!isMissionComplete(mission)) {
+        return state;
+      }
+
       const prevScore  = state.score.value;
-      const rewardScore = mission.rewardScore ?? 0;
       const rewardRP    = rpForMissionComplete(mission);
-      const rawNew      = Math.round((prevScore + rewardScore) * 10) / 10;
-      const newScore    = Math.min(10, Math.max(0, rawNew));
+      // Reward goes to the OWNING CATEGORY (clamped 0–10); Life Score then
+      // re-derives from categories. The global score is never bumped directly.
+      const nextCategories = applyMissionRewardToCategories(state.categories, mission);
+      const newScore    = deriveLifeScoreFromCategories(nextCategories, { streakDays: state.score.streak });
       const newTier     = tierForScore(newScore);
       const newDelta    = Math.round((newScore - prevScore) * 10) / 10;
       const newPbScore  = Math.max(state.score.pbScore ?? 0, newScore);
@@ -251,7 +381,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         const ids = todayEntry.completedMissionIds ?? [];
         if (!ids.includes(mission.id)) {
           nextLogbook = [
-            { ...todayEntry, completedMissionIds: [...ids, mission.id] },
+            { ...todayEntry, completedMissionIds: [...ids, mission.id], categoryScores: nextCategories },
             ...state.logbook.slice(1),
           ];
         }
@@ -263,7 +393,7 @@ function reducer(state: AppState, action: AppAction): AppState {
           date: today,
           lifeScore: newScore,
           delta: 0,
-          categoryScores: state.categories,
+          categoryScores: nextCategories,
           tags: [],
           rankTier: newTier,
           streakDay: state.score.streak,
@@ -275,6 +405,7 @@ function reducer(state: AppState, action: AppAction): AppState {
 
       return {
         ...state,
+        categories: nextCategories,
         activeMissions: state.activeMissions.filter(m => m.id !== action.payload.missionId),
         completedMissions: alreadyDone
           ? state.completedMissions
@@ -348,13 +479,15 @@ export interface SubmitCheckInResult {
   rpEarned: number;
   /** True when this edited an existing same-day check-in. */
   isResubmit: boolean;
+  /** Missions that finished as a result of this check-in (for mission_events). */
+  newlyCompletedMissions: Mission[];
 }
 
 interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   // convenience helpers
-  submitCheckIn: (rawRatings: Record<CategoryId, number>, meta?: { tags?: string[]; note?: string }) => SubmitCheckInResult;
+  submitCheckIn: (rawRatings: Record<CategoryId, number>, meta?: { tags?: string[]; note?: string; missionDaily?: Record<string, boolean> }) => SubmitCheckInResult;
   acceptMission: (mission: Mission) => void;
   abandonMission: (missionId: string) => void;
   completeMission: (missionId: string) => void;
@@ -542,9 +675,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Convenience helpers ──────────────────────────────────────────────
   const submitCheckIn = useCallback(
-    (rawRatings: Record<CategoryId, number>, meta?: { tags?: string[]; note?: string }): SubmitCheckInResult => {
-      const outcome = buildCheckIn(state, { rawRatings, tags: meta?.tags, note: meta?.note });
-      dispatch({ type: 'SUBMIT_CHECKIN', payload: { rawRatings, tags: meta?.tags, note: meta?.note } });
+    (rawRatings: Record<CategoryId, number>, meta?: { tags?: string[]; note?: string; missionDaily?: Record<string, boolean> }): SubmitCheckInResult => {
+      const outcome = buildCheckIn(state, { rawRatings, tags: meta?.tags, note: meta?.note, missionDaily: meta?.missionDaily });
+      dispatch({ type: 'SUBMIT_CHECKIN', payload: { rawRatings, tags: meta?.tags, note: meta?.note, missionDaily: meta?.missionDaily } });
       return {
         prevScore: outcome.prevScore,
         prevTier: outcome.prevTier,
@@ -554,6 +687,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         entry: outcome.entry,
         rpEarned: outcome.rpEarned,
         isResubmit: outcome.isResubmit,
+        newlyCompletedMissions: outcome.newlyCompletedMissions,
       };
     },
     [state],

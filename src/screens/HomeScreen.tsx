@@ -221,7 +221,7 @@ export function HomeScreen({
               <HudCard>
                 <Text style={styles.emptyMissionTitle}>No active operation</Text>
                 <Text style={styles.emptyMissionBody}>
-                  Accept an operation to start compounding score and RP.
+                  Accept an operation to strengthen a category over time and earn RP.
                 </Text>
                 <View style={[styles.emptyMissionCta, { borderColor: alpha(tier.primary, 0.4) }]}>
                   <Text style={[styles.emptyMissionCtaText, { color: tier.primary }]}>BROWSE OPERATIONS →</Text>

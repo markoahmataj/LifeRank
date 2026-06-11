@@ -189,10 +189,20 @@ export interface Mission {
   /** 0–100. */
   progress?: number;
   tasks?: MissionTask[];
-  /** Days. */
+  /** Days. Content-level protocol length (e.g. a "30-day" mission). */
   duration?: number;
-  /** Day count out of duration. */
+  /** Day count out of duration. (Legacy display field; superseded by daysCompleted.) */
   daysIn?: number;
+  /** Number of days that must be completed before the mission can finish.
+   *  Defaults from `duration` when accepted; a value of 1 = single-day mission. */
+  requiredDays?: number;
+  /** How many qualifying days the user has actually completed so far. */
+  daysCompleted?: number;
+  /** ISO dates (YYYY-MM-DD) on which the mission was marked done. Prevents
+   *  double-counting a day and lets the logbook show progress on the right day. */
+  completedDates?: string[];
+  /** ISO date of the most recent progress increment (one increment per day). */
+  lastProgressDate?: string;
   /** Tier required to unlock. */
   requiredTier?: RankTierId;
   endsAt?: string;          // ISO
@@ -369,6 +379,9 @@ export interface LogbookEntry {
   tags: string[];
   note?: string;
   completedMissionIds?: string[];
+  /** Per-active-mission "done today?" answers captured at this check-in.
+   *  Keyed by mission id. Used by the logbook to show daily mission progress. */
+  missionDaily?: Record<string, boolean>;
   rankTier: RankTierId;
   streakDay: number;
   /** How this entry originated. 'mission' = created by a mission completion on a

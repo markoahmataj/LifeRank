@@ -26,30 +26,49 @@ export function updateCategoryScore(previous: number, todayRaw: number): number 
 export interface LifeScoreInputs {
   categoryScores: CategoryScore[];
   streakDays: number;
-  activeMissions: Mission[];
+  /** @deprecated Missions no longer affect Life Score directly. Kept optional so
+   *  existing callers compile; the value is IGNORED. Missions improve their
+   *  owning category, and Life Score re-derives from categories. */
+  activeMissions?: Mission[];
 }
 
+/**
+ * Maximum bonus any modifier can add on top of the category mean. Reached only
+ * at a 90-day streak. Missions and RP never contribute to Life Score.
+ */
+export const MAX_CONSISTENCY_BONUS = 0.4;
+
+/**
+ * THE single source of truth for Life Score.
+ *
+ *   Life Score = mean(category values) + consistency bonus,  clamped 0–10
+ *
+ * Category scores (0–10) are the source of truth. The only modifier is the
+ * streak-based consistency bonus, capped at MAX_CONSISTENCY_BONUS (+0.4).
+ *
+ * Worked example: categories [5,7,8,6,8] → mean 6.8 → at most 7.2 with a full
+ * streak. It is impossible to reach Zenith/10.0 from a 6.8 category mean.
+ */
+export function deriveLifeScoreFromCategories(
+  categoryScores: CategoryScore[],
+  ctx?: { streakDays?: number },
+): number {
+  const base = mean(categoryScores.map(c => c.value));
+  const consistency = consistencyModifier(ctx?.streakDays ?? 0);
+  return clamp(round1(base + consistency), 0, 10);
+}
+
+/** Back-compat wrapper. Delegates to deriveLifeScoreFromCategories and IGNORES
+ *  activeMissions — missions never inflate Life Score. */
 export function computeLifeScore(inputs: LifeScoreInputs): number {
-  const base = mean(inputs.categoryScores.map(c => c.value));
-  const consistency = consistencyModifier(inputs.streakDays);
-  const mission     = missionModifier(inputs.activeMissions);
-  return clamp(round1(base + consistency + mission), 0, 10);
+  return deriveLifeScoreFromCategories(inputs.categoryScores, { streakDays: inputs.streakDays });
 }
 
 export function consistencyModifier(streakDays: number): number {
   if (streakDays <= 0)  return 0;
-  if (streakDays >= 90) return 0.40;
+  if (streakDays >= 90) return MAX_CONSISTENCY_BONUS;
   if (streakDays >= 30) return 0.35 + ((streakDays - 30) / 60) * 0.05;
   return Math.min(0.35, streakDays * (0.35 / 30));
-}
-
-export function missionModifier(active: Mission[]): number {
-  if (!active.length) return 0;
-  const sum = active.reduce(
-    (acc, m) => acc + Math.min(0.15, m.rewardScore * 0.3),
-    0,
-  );
-  return Math.min(0.3, sum);
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -73,6 +92,68 @@ export function rpForCheckIn(streakDay: number): number {
 
 export function rpForMissionComplete(m: Mission): number {
   return m.rewardRP ?? Math.round(m.rewardScore * 250);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   3b. MISSION PROGRESSION — protocols, not instant buttons
+   ────────────────────────────────────────────────────────────────── */
+
+/** Days that must be completed before a mission can finish. Falls back to the
+ *  content `duration`, then to 1 (a single-day mission). */
+export function requiredDaysForMission(m: Mission): number {
+  return m.requiredDays ?? m.duration ?? 1;
+}
+
+/** True when the mission has met its required completed-day count (or is a
+ *  single-day mission). The only gate for completion. */
+export function isMissionComplete(m: Mission): boolean {
+  const required = requiredDaysForMission(m);
+  if (required <= 1) return true;
+  return (m.daysCompleted ?? 0) >= required;
+}
+
+/** 0–100 progress based on completed days vs required days. */
+export function missionProgressPct(m: Mission): number {
+  const required = requiredDaysForMission(m);
+  if (required <= 1) return 100;
+  return clamp(Math.round(((m.daysCompleted ?? 0) / required) * 100), 0, 100);
+}
+
+/**
+ * Apply a completed mission's reward to its OWNING category (clamped 0–10) and
+ * return the new category array. Life Score is then re-derived from these
+ * categories — the reward never touches the global score directly.
+ */
+export function applyMissionRewardToCategories(
+  categories: CategoryScore[],
+  mission: Mission,
+): CategoryScore[] {
+  const reward = mission.rewardScore ?? 0;
+  return categories.map(c => {
+    if (c.id !== mission.category) return c;
+    const newValue = clamp(round1(c.value + reward), 0, 10);
+    return { ...c, value: newValue, delta: round1(newValue - c.value) };
+  });
+}
+
+/**
+ * Register one day of progress for a mission on `date` (YYYY-MM-DD). Idempotent
+ * per date: marking the same day twice does not double-count. Returns the
+ * updated mission (status/category reward are handled by the caller on
+ * completion).
+ */
+export function advanceMissionDay(m: Mission, date: string): Mission {
+  const dates = m.completedDates ?? [];
+  if (dates.includes(date)) return m; // already counted today
+  const completedDates = [...dates, date];
+  const daysCompleted = completedDates.length;
+  return {
+    ...m,
+    completedDates,
+    daysCompleted,
+    lastProgressDate: date,
+    progress: missionProgressPct({ ...m, daysCompleted }),
+  };
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -185,4 +266,28 @@ export function nextPromotionScore(tier: RankTierId): number {
   const next = i >= 0 && i < order.length - 1 ? order[i + 1] : null;
   if (!next) return 10.0;
   return RANK_THRESHOLDS.find(r => r.tier === next)?.min ?? 10.0;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   8. RECONCILIATION — self-heal inconsistent persisted state
+   ────────────────────────────────────────────────────────────────── */
+
+/**
+ * Recompute a persisted LifeScore from its categories (the source of truth).
+ * `value`, `tier`, `nextRankAt` and `pbScore` are re-derived; `streak`,
+ * `delta`, and `lastCheckIn` are preserved. Used on hydration to self-heal
+ * users whose stored score was inflated by the old mission-completion bug
+ * (score = prevScore + rewardScore).
+ */
+export function reconcileScore(score: LifeScore, categories: CategoryScore[]): LifeScore {
+  if (!categories.length) return score;
+  const value = deriveLifeScoreFromCategories(categories, { streakDays: score.streak });
+  const tier = tierForScore(value);
+  return {
+    ...score,
+    value,
+    tier,
+    nextRankAt: nextPromotionScore(tier),
+    pbScore: Math.max(score.pbScore ?? 0, value),
+  };
 }

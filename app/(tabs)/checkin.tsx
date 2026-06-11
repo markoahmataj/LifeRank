@@ -1,28 +1,41 @@
 // app/(tabs)/checkin.tsx
-// Daily 5-step check-in flow. Manages stepIndex + per-step answers locally;
-// dispatches SUBMIT_CHECKIN on completion and navigates to results / rank change.
+// Daily check-in flow: 5 category steps, then (if there are active missions) a
+// mission-progress step. Dispatches SUBMIT_CHECKIN on completion and navigates
+// to results / rank change.
 
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { CheckInScreen } from '@/src/screens/CheckInScreen';
+import { MissionCheckInScreen } from '@/src/screens/MissionCheckInScreen';
 import { useApp } from '@/src/store/AppContext';
+import { useAuth } from '@/src/auth/AuthProvider';
 import { getTier, CATEGORY_ORDER } from '@/src/design-system/tokens';
-import { compareTiers } from '@/src/design-system/scoringModel';
+import { compareTiers, rpForMissionComplete } from '@/src/design-system/scoringModel';
 import * as Sync from '@/src/services/liferankSync';
 import type { CheckInAnswer, CategoryId } from '@/src/design-system/types';
 
 export default function CheckInRoute() {
   const router = useRouter();
   const { state, submitCheckIn } = useApp();
+  const { user } = useAuth();
   const tier = getTier(state.score.tier);
 
+  const activeMissions = state.activeMissions;
+  const hasMissionStep = activeMissions.length > 0;
+
+  // 'category' = rating the 5 pillars; 'mission' = confirming active missions.
+  const [phase, setPhase] = useState<'category' | 'mission'>('category');
   const [stepIndex, setStepIndex] = useState(0);
   // Answers indexed by category step, so stepping back restores the prior answer.
   const [answers, setAnswers] = useState<CheckInAnswer[]>([]);
+  // missionId → done today.
+  const [missionDaily, setMissionDaily] = useState<Record<string, boolean>>({});
 
   const resetFlow = () => {
     setAnswers([]);
     setStepIndex(0);
+    setMissionDaily({});
+    setPhase('category');
   };
 
   const exitToHome = () => {
@@ -30,7 +43,67 @@ export default function CheckInRoute() {
     router.replace('/(tabs)');
   };
 
-  // Restore a previously-entered answer when the user steps back to a category.
+  // Shared submit — builds rawRatings/tags from category answers, dispatches the
+  // check-in (with mission daily answers), fires mission_events for any mission
+  // that completed, then routes to results / rank change.
+  const finishCheckIn = (collected: CheckInAnswer[]) => {
+    const rawRatings: Record<CategoryId, number> = {} as Record<CategoryId, number>;
+    const tags = new Set<string>();
+    collected.forEach(a => {
+      rawRatings[a.category] = a.score;
+      a.tags.forEach(t => tags.add(t));
+    });
+    CATEGORY_ORDER.forEach(id => {
+      if (rawRatings[id] === undefined) rawRatings[id] = 5;
+    });
+
+    const { prevTier, newTier, prevScore, newScore, entry, rpEarned, newlyCompletedMissions } =
+      submitCheckIn(rawRatings, { tags: Array.from(tags), missionDaily });
+    const direction = compareTiers(prevTier, newTier);
+
+    Sync.insertCheckin(entry, rpEarned);
+
+    // Log a completion event for each mission that finished via this check-in.
+    if (user) {
+      newlyCompletedMissions.forEach(m => {
+        Sync.insertMissionEvent(user.id, {
+          missionId: m.id,
+          eventType: 'completed',
+          missionSnapshot: m,
+          rpEarned: rpForMissionComplete(m),
+          scoreImpact: m.rewardScore,
+        });
+      });
+    }
+
+    resetFlow();
+
+    if (direction > 0) {
+      router.push(`/rank/promotion?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
+    } else if (direction < 0) {
+      router.push(`/rank/demotion-risk?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
+    } else {
+      router.push('/checkin/results');
+    }
+  };
+
+  // ── MISSION PHASE ───────────────────────────────────────────────────
+  if (phase === 'mission') {
+    return (
+      <MissionCheckInScreen
+        tier={tier}
+        missions={activeMissions}
+        answers={missionDaily}
+        streak={state.score.streak}
+        onToggle={(missionId, done) => setMissionDaily(prev => ({ ...prev, [missionId]: done }))}
+        onBack={() => setPhase('category')}
+        onCancel={exitToHome}
+        onSubmit={() => finishCheckIn(answers)}
+      />
+    );
+  }
+
+  // ── CATEGORY PHASE ──────────────────────────────────────────────────
   const savedAnswer = answers[stepIndex];
 
   return (
@@ -43,6 +116,7 @@ export default function CheckInRoute() {
       stepIndex={stepIndex}
       initialScore={savedAnswer?.score}
       initialTags={savedAnswer?.tags}
+      isFinalStep={!hasMissionStep}
       onNext={(answer) => {
         const updated = [...answers];
         updated[stepIndex] = answer;
@@ -53,31 +127,12 @@ export default function CheckInRoute() {
           return;
         }
 
-        // Final category — build rawRatings map + collect tags from every answer.
-        const rawRatings: Record<CategoryId, number> = {} as Record<CategoryId, number>;
-        const tags = new Set<string>();
-        updated.forEach(a => {
-          rawRatings[a.category] = a.score;
-          a.tags.forEach(t => tags.add(t));
-        });
-        // Ensure all categories have a value (fallback to 5).
-        CATEGORY_ORDER.forEach(id => {
-          if (rawRatings[id] === undefined) rawRatings[id] = 5;
-        });
-
-        const { prevTier, newTier, prevScore, newScore, entry, rpEarned } = submitCheckIn(rawRatings, { tags: Array.from(tags) });
-        const direction = compareTiers(prevTier, newTier);
-
-        Sync.insertCheckin(entry, rpEarned);
-
-        resetFlow();
-
-        if (direction > 0) {
-          router.push(`/rank/promotion?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
-        } else if (direction < 0) {
-          router.push(`/rank/demotion-risk?prevTier=${prevTier}&newTier=${newTier}&prevScore=${prevScore}&newScore=${newScore}`);
+        // Last category done. Go to the mission step if there are active missions,
+        // otherwise submit immediately.
+        if (hasMissionStep) {
+          setPhase('mission');
         } else {
-          router.push('/checkin/results');
+          finishCheckIn(updated);
         }
       }}
       onBack={() => {
