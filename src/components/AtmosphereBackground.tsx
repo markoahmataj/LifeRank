@@ -36,11 +36,9 @@ export function AtmosphereBackground({
         preserveAspectRatio="xMidYMid slice"
       >
         <Defs>
-          <RadialGradient id="g1" cx="50%" cy="20%" r="60%" fx="50%" fy="20%">
-            <Stop offset="0%"   stopColor={tier.primary} stopOpacity={op(0.30)}/>
-            <Stop offset="40%"  stopColor={tier.mid}     stopOpacity={op(0.18)}/>
-            <Stop offset="100%" stopColor={tier.far}     stopOpacity={0}/>
-          </RadialGradient>
+          {/* NOTE: the former top glow (g1) was removed — on wide/web layouts the
+             portrait gradient rendered as a tier-coloured horizontal band across
+             the top that varied by rank. The emblem supplies the top-centre glow. */}
           <RadialGradient id="g2" cx="80%" cy="70%" r="50%">
             <Stop offset="0%"   stopColor={tier.glow2} stopOpacity={op(1)}/>
             <Stop offset="100%" stopColor={tier.glow2} stopOpacity={0}/>
@@ -51,8 +49,7 @@ export function AtmosphereBackground({
           </RadialGradient>
         </Defs>
 
-        {/* Glow circles */}
-        <Circle cx={195} cy={170} r={320} fill="url(#g1)"/>
+        {/* Glow circles (bottom ambiance only) */}
         <Circle cx={312} cy={590} r={220} fill="url(#g2)"/>
         <Circle cx={78}  cy={717} r={200} fill="url(#g3)"/>
 
