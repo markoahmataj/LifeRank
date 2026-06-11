@@ -408,6 +408,28 @@ export async function fetchRemoteState(userId: string): Promise<RemoteState | nu
   }
 }
 
+/**
+ * Update the user's profile identity (handle and/or display name). Uses the
+ * existing `profiles.handle` / `profiles.display_name` columns — no schema
+ * change. Fire-and-forget: local state is the immediate source of truth and a
+ * failed cloud write (e.g. a duplicate handle) is logged, not thrown.
+ */
+export async function updateProfile(patch: { handle?: string; displayName?: string }): Promise<void> {
+  const userId = await currentUserId();
+  if (!userId) return;
+  const row: Record<string, string> = {};
+  if (patch.handle != null) row.handle = patch.handle;
+  if (patch.displayName != null) row.display_name = patch.displayName;
+  if (Object.keys(row).length === 0) return;
+  try {
+    const { error } = await supabase.from('profiles').update(row).eq('id', userId);
+    if (error) throw error;
+    console.log('[PROFILE_UPDATE_SUCCESS]', { userId, ...row });
+  } catch (e) {
+    console.error('[PROFILE_UPDATE_ERROR] updateProfile failed', e);
+  }
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    fetchProfile — identity (handle / display name)
    ──────────────────────────────────────────────────────────────────── */

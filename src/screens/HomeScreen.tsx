@@ -7,12 +7,11 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 
-import type { LifeScore, LogbookEntry, RankTier, SystemSignal, UserState } from '../design-system/types';
+import type { LifeScore, LogbookEntry, RankTier, UserState } from '../design-system/types';
 import { AtmosphereBackground } from '../components/AtmosphereBackground';
 import { RankEmblem } from '../components/RankEmblem';
 import { EnergyBar } from '../components/EnergyBar';
 import { HudCard } from '../components/HudCard';
-import { SystemSignals } from '../components/SystemSignals';
 import { CategoryStatCard } from '../components/CategoryStatCard';
 import { MissionCard } from '../components/MissionCard';
 import { CategoryGlyphIcon } from '../components/CategoryGlyph';
@@ -29,38 +28,6 @@ const EMPTY_USER: UserState = {
   categories: [],
   activeMissions: [],
 };
-
-function computeSystemSignals(score: LifeScore, logbook: LogbookEntry[]): SystemSignal[] {
-  const momentum = Math.round(Math.max(0, Math.min(100, 50 + score.delta * 25)));
-  const control  = Math.min(100, score.streak * 5);
-  const friction = Math.max(0, 100 - control);
-  return [
-    {
-      id: 'momentum',
-      label: 'Momentum',
-      value: momentum,
-      display: score.delta > 0.3 ? 'HI' : score.delta < -0.1 ? 'LO' : 'MID',
-      color: '#34d399',
-      derivation: `Score slope · ${score.delta >= 0 ? '+' : ''}${score.delta.toFixed(1)} this check-in`,
-    },
-    {
-      id: 'control',
-      label: 'Control',
-      value: control,
-      display: String(control),
-      color: '#22D3EE',
-      derivation: `${score.streak}-day streak`,
-    },
-    {
-      id: 'friction',
-      label: 'Friction',
-      value: friction,
-      display: friction < 20 ? 'LOW' : friction < 50 ? 'MID' : 'HI',
-      color: '#FF2D5C',
-      derivation: 'Derived from streak consistency',
-    },
-  ];
-}
 
 export interface HomeScreenProps {
   user?: UserState;
@@ -91,7 +58,6 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const tier: RankTier = getTier(user.score.tier);
   const activeMission = user.activeMissions[0];
-  const signals = computeSystemSignals(user.score, logbook);
 
   return (
     <View style={styles.root}>
@@ -174,11 +140,6 @@ export function HomeScreen({
               </Text>
               <Text style={styles.footLabel}>ZENITH</Text>
             </View>
-          </View>
-
-          {/* SYSTEM SIGNALS */}
-          <View style={styles.vitalsRow}>
-            <SystemSignals signals={signals} showLockedHealthRibbon/>
           </View>
         </View>
 

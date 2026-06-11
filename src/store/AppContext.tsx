@@ -494,6 +494,7 @@ interface AppContextValue {
   toggleMissionTask: (missionId: string, taskId: string) => void;
   calibrate: (args: { score: LifeScore; categories: CategoryScore[]; build: UserBuild; handle: string; displayName: string }) => void;
   setSettings: (patch: Partial<UserSettings>) => void;
+  updateProfile: (patch: { handle?: string; displayName?: string }) => void;
   reset: () => void;
 }
 
@@ -731,6 +732,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     Sync.upsertSettings({ ...stateRef.current.settings, ...patch });
   }, []);
 
+  // Edit identity (display name / handle). Updates local state immediately
+  // (persisted to AsyncStorage by the write-through effect) and pushes to the
+  // existing profiles table — no schema change.
+  const updateProfile = useCallback((patch: { handle?: string; displayName?: string }) => {
+    if (patch.displayName != null) dispatch({ type: 'SET_DISPLAY_NAME', payload: patch.displayName });
+    if (patch.handle != null) dispatch({ type: 'SET_HANDLE', payload: patch.handle });
+    Sync.updateProfile(patch);
+  }, []);
+
   const reset = useCallback(() => {
     // Clear local cache + remote data, but keep the auth session.
     Sync.clearRemoteData();
@@ -741,7 +751,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       state, dispatch,
       submitCheckIn, acceptMission, abandonMission, completeMission,
-      toggleMissionTask, calibrate, setSettings, reset,
+      toggleMissionTask, calibrate, setSettings, updateProfile, reset,
     }}>
       {children}
     </AppContext.Provider>

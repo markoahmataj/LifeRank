@@ -2,13 +2,13 @@
 // Floating pill tab bar with 5 SVG icons. Absolute positioned at bottom.
 
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import type { TabScreenName, RankTier } from '../design-system/types';
-import { fonts, surface, radius, alpha } from '../design-system/tokens';
+import { surface, radius, alpha } from '../design-system/tokens';
 
 interface FloatingTabBarProps {
   active: TabScreenName;
@@ -16,12 +16,12 @@ interface FloatingTabBarProps {
   tier: RankTier;
 }
 
-const TABS: Array<{ id: TabScreenName; label: string }> = [
-  { id: 'home',     label: 'Home'     },
-  { id: 'missions', label: 'Ops'      },
-  { id: 'checkin',  label: 'Check-In' },
-  { id: 'stats',    label: 'Stats'    },
-  { id: 'share',    label: 'Share'    },
+const TABS: Array<{ id: TabScreenName }> = [
+  { id: 'home'     },
+  { id: 'missions' },
+  { id: 'checkin'  },
+  { id: 'stats'    },
+  { id: 'share'    },
 ];
 
 export function FloatingTabBar({ active, onChange, tier }: FloatingTabBarProps) {
@@ -42,6 +42,10 @@ export function FloatingTabBar({ active, onChange, tier }: FloatingTabBarProps) 
               key={tab.id}
               onPress={() => onChange(tab.id)}
               style={styles.tabItem}
+              accessibilityRole="button"
+              accessibilityLabel={tab.id}
+              accessibilityState={{ selected: isActive }}
+              hitSlop={8}
             >
               {isActive && (
                 <LinearGradient
@@ -50,9 +54,7 @@ export function FloatingTabBar({ active, onChange, tier }: FloatingTabBarProps) 
                 />
               )}
               <TabIcon id={tab.id} active={isActive} color={isActive ? tier.primary : surface.textMuted}/>
-              <Text style={[styles.label, { color: isActive ? tier.primary : surface.textMuted }]}>
-                {tab.label}
-              </Text>
+              {isActive && <View style={[styles.activeDot, { backgroundColor: tier.primary }]}/>}
             </Pressable>
           );
         })}
@@ -126,16 +128,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
-    gap: 3,
+    gap: 5,
     position: 'relative',
   },
   activeIndicator: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     borderRadius: radius.xxl,
   },
-  label: {
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.5,
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 });

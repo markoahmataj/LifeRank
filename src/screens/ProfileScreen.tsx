@@ -3,8 +3,8 @@
 // the system — handle, rank, build, records.
 // PORT: app/profile.tsx
 
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import type { CategoryId, LifeScore, RankTier, UserBuild } from '../design-system/types';
@@ -23,6 +23,9 @@ export interface ProfileScreenProps {
   onShare?: () => void;
   onBack?: () => void;
   onOpenSettings?: () => void;
+  onSignOut?: () => void;
+  /** Persist edited identity. Handle is passed WITH its leading '@'. */
+  onSaveProfile?: (patch: { displayName: string; handle: string }) => void;
   handle?: string;
   displayName?: string;
   score?: LifeScore;
@@ -41,6 +44,8 @@ export function ProfileScreen({
   onShare,
   onBack,
   onOpenSettings,
+  onSignOut,
+  onSaveProfile,
   handle = '@you',
   displayName = 'You',
   score,
@@ -60,6 +65,51 @@ export function ProfileScreen({
   const longest  = longestStreak ?? score?.streak ?? 0;
   const checkIns = totalCheckIns ?? 0;
   const ops      = completedOperations ?? 0;
+
+  // ── Inline identity editing ─────────────────────────────────────────
+  const canEdit = !!onSaveProfile;
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(displayName);
+  const [handleInput, setHandleInput] = useState(handle.replace(/^@+/, ''));
+  const [error, setError] = useState<string | null>(null);
+
+  const beginEdit = () => {
+    setNameInput(displayName);
+    setHandleInput(handle.replace(/^@+/, ''));
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const saveEdit = () => {
+    const name = nameInput.trim();
+    const cleanHandle = handleInput.trim().replace(/^@+/, '');
+
+    if (name.length < 1 || name.length > 30) {
+      setError('Display name must be 1–30 characters.');
+      return;
+    }
+    if (/\s/.test(cleanHandle)) {
+      setError('Handle cannot contain spaces.');
+      return;
+    }
+    if (cleanHandle.length < 2 || cleanHandle.length > 20) {
+      setError('Handle must be 2–20 characters.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9._]+$/.test(cleanHandle)) {
+      setError('Handle: letters, numbers, dots, underscores only.');
+      return;
+    }
+
+    onSaveProfile?.({ displayName: name, handle: `@${cleanHandle}` });
+    setEditing(false);
+    setError(null);
+  };
 
   return (
     <View style={styles.root}>
@@ -156,10 +206,89 @@ export function ProfileScreen({
           </HudCard>
         </View>
 
+        {/* ACCOUNT / IDENTITY */}
+        {canEdit && (
+          <>
+            <SectionHeader index="05" title="Account"/>
+            <View style={styles.padded}>
+              <HudCard padding={{ x: 16, y: 14 }}>
+                {!editing ? (
+                  <>
+                    <View style={styles.acctRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.smallCap}>DISPLAY NAME</Text>
+                        <Text style={styles.acctValue}>{displayName}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.smallCap}>HANDLE</Text>
+                        <Text style={styles.acctValue}>{handle}</Text>
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={beginEdit}
+                      style={[styles.editBtn, { borderColor: alpha(tier.primary, 0.4) }]}
+                    >
+                      <Text style={[styles.editBtnText, { color: tier.primary }]}>EDIT IDENTITY</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.smallCap}>DISPLAY NAME</Text>
+                    <TextInput
+                      value={nameInput}
+                      onChangeText={setNameInput}
+                      placeholder="Your name"
+                      placeholderTextColor={surface.textMuted}
+                      style={styles.input}
+                      maxLength={30}
+                      autoCapitalize="words"
+                    />
+
+                    <Text style={[styles.smallCap, { marginTop: 12 }]}>HANDLE</Text>
+                    <View style={styles.handleInputRow}>
+                      <Text style={styles.handlePrefix}>@</Text>
+                      <TextInput
+                        value={handleInput}
+                        onChangeText={t => setHandleInput(t.replace(/^@+/, ''))}
+                        placeholder="handle"
+                        placeholderTextColor={surface.textMuted}
+                        style={[styles.input, { flex: 1, marginTop: 0 }]}
+                        maxLength={20}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+
+                    <View style={styles.editActions}>
+                      <Pressable onPress={cancelEdit} style={[styles.ghostBtn, { borderColor: surface.hairline }]}>
+                        <Text style={styles.ghostBtnText}>CANCEL</Text>
+                      </Pressable>
+                      <Pressable onPress={saveEdit} style={[styles.saveBtn, { backgroundColor: alpha(tier.primary, 0.2), borderColor: tier.primary }]}>
+                        <Text style={[styles.saveBtnText, { color: '#fff' }]}>SAVE</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
+              </HudCard>
+            </View>
+          </>
+        )}
+
         {/* SHARE */}
         <View style={[styles.padded, { marginTop: 22 }]}>
           <PrimaryCTA tier={tier} label="Share Profile Card" onPress={onShare}/>
         </View>
+
+        {/* SIGN OUT */}
+        {onSignOut && (
+          <View style={[styles.padded, { marginTop: 12 }]}>
+            <Pressable onPress={onSignOut} style={[styles.signOutBtn, { borderColor: alpha(state.break, 0.45) }]}>
+              <Text style={[styles.signOutText, { color: state.break }]}>SIGN OUT</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -231,4 +360,50 @@ const styles = StyleSheet.create({
   favIcon:  { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   favName:  { fontFamily: fonts.displayBold, fontSize: 17, fontWeight: '700', color: '#fff', marginTop: 4 },
   favBlurb: { fontFamily: fonts.display, fontSize: 11.5, color: surface.textTertiary, marginTop: 2 },
+
+  acctRow:   { flexDirection: 'row', gap: 12 },
+  acctValue: { fontFamily: fonts.displayBold, fontSize: 15, fontWeight: '600', color: '#fff', marginTop: 4 },
+  editBtn: {
+    alignSelf: 'flex-start', marginTop: 14,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: radius.pill, borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  editBtnText: { fontFamily: fonts.monoBold, fontSize: 10, fontWeight: '600', letterSpacing: 1 },
+
+  input: {
+    marginTop: 6,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: surface.hairline,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    fontFamily: fonts.display, fontSize: 14, color: '#fff',
+  },
+  handleInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6,
+    paddingLeft: 12,
+    borderRadius: 10, borderWidth: 1, borderColor: surface.hairline,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  handlePrefix: { fontFamily: fonts.monoBold, fontSize: 14, color: surface.textTertiary },
+  errorText: { fontFamily: fonts.display, fontSize: 11.5, color: state.break, marginTop: 10 },
+
+  editActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  ghostBtn: {
+    flex: 1, height: 44, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  ghostBtnText: { fontFamily: fonts.monoBold, fontSize: 11, fontWeight: '600', letterSpacing: 1, color: surface.textSecondary },
+  saveBtn: {
+    flex: 1, height: 44, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  saveBtnText: { fontFamily: fonts.monoBold, fontSize: 11, fontWeight: '600', letterSpacing: 1 },
+
+  signOutBtn: {
+    height: 52, borderRadius: radius.pill, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  signOutText: { fontFamily: fonts.displayBold, fontSize: 12, fontWeight: '600', letterSpacing: 1.4 },
 });
